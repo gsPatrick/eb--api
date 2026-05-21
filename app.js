@@ -17,6 +17,7 @@ const { startScheduledSync } = require('./src/features/property/property-sync.se
 const { ensureUploadDir, ensureAvatarDir } = require('./src/utils/storage');
 const notificationProvider = require('./src/providers/notification/notification.provider');
 const { ensureDefaultAdmin } = require('./src/bootstrap/ensure-default-admin');
+const { runMigrations } = require('./src/bootstrap/run-migrations');
 
 ensureUploadDir();
 ensureAvatarDir();
@@ -55,6 +56,7 @@ async function start() {
     await sequelize.authenticate();
     console.log('[db] PostgreSQL connection established');
 
+    await runMigrations();
     await ensureDefaultAdmin();
 
     notificationProvider.init(server);
@@ -67,7 +69,7 @@ async function start() {
       console.log(`[server] Environment: ${config.env}`);
     });
   } catch (error) {
-    console.error('[db] Unable to connect to PostgreSQL:', error.message);
+    console.error('[startup] Failed:', error.message);
     process.exit(1);
   }
 }

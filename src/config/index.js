@@ -75,6 +75,7 @@ const config = {
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     ssl: process.env.DB_SSL === 'true',
+    migrateOnStart: process.env.DB_MIGRATE_ON_START !== 'false' && env !== 'test',
   },
   icalSync: {
     enabled: process.env.ICAL_SYNC_ENABLED !== 'false',
