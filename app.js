@@ -18,6 +18,7 @@ const { startScheduledSync } = require('./src/features/property/property-sync.se
 const { ensureUploadDir, ensureAvatarDir } = require('./src/utils/storage');
 const notificationProvider = require('./src/providers/notification/notification.provider');
 const { ensureDefaultAdmin } = require('./src/bootstrap/ensure-default-admin');
+const { ensureTestProvider } = require('./src/bootstrap/ensure-test-provider');
 const { runMigrations } = require('./src/bootstrap/run-migrations');
 
 ensureUploadDir();
@@ -76,6 +77,7 @@ async function start() {
 
     await runMigrations();
     await ensureDefaultAdmin();
+    await ensureTestProvider();
 
     notificationProvider.init(server);
     startScheduledSync();

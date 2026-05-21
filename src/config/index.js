@@ -103,6 +103,13 @@ const config = {
     password: process.env.ADMIN_PASSWORD || 'Admin@EB2026',
     locale: process.env.ADMIN_LOCALE || 'pt',
   },
+  testProviderBootstrap: {
+    enabled: process.env.TEST_PROVIDER_BOOTSTRAP !== 'false' && env !== 'test',
+    name: process.env.TEST_PROVIDER_NAME || 'Patrick Prestador',
+    email: process.env.TEST_PROVIDER_EMAIL || 'patrickprestador@gmail.com',
+    password: process.env.TEST_PROVIDER_PASSWORD || 'patrickprestador',
+    locale: process.env.TEST_PROVIDER_LOCALE || 'pt',
+  },
 };
 
 module.exports = config;
