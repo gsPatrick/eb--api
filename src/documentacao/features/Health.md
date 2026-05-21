@@ -6,6 +6,10 @@ Endpoints de probe para orquestração (Kubernetes, load balancers) e monitorame
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
+| GET | `/` | Não | Info da API (versão, ambiente, links) |
+| GET | `/ping` | Não | Ping na raiz (liveness) |
+| GET | `/health` | Não | Health na raiz |
+| GET | `/api` | Não | Índice da API v1 (rotas disponíveis) |
 | GET | `/api/v1/ping` | Não | Resposta mínima (liveness) |
 | GET | `/api/v1/health` | Não | Status detalhado da API |
 

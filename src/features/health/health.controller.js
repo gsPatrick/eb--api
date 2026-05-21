@@ -13,7 +13,19 @@ const getPing = catchAsync(async (req, res) => {
   sendSuccess(res, { data });
 });
 
+const getRoot = catchAsync(async (req, res) => {
+  const data = healthService.getRootInfo();
+  sendSuccess(res, { message: t('API_ROOT', req.locale), data });
+});
+
+const getApiIndex = catchAsync(async (req, res) => {
+  const data = healthService.getApiIndex();
+  sendSuccess(res, { data });
+});
+
 module.exports = {
   getHealth,
   getPing,
+  getRoot,
+  getApiIndex,
 };

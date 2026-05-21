@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('./src/config');
 const apiRoutes = require('./src/routes');
+const rootRoutes = require('./src/routes/root.routes');
 const { errorHandler, notFoundHandler } = require('./src/middlewares/error.middleware');
 const { localeMiddleware } = require('./src/middlewares/locale.middleware');
 const { sequelize } = require('./src/models');
@@ -42,6 +43,7 @@ if (config.rateLimit.enabled) {
   );
 }
 
+app.use(rootRoutes);
 app.use(config.apiPrefix, apiRoutes);
 
 app.use(notFoundHandler);

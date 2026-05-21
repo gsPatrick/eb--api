@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const healthController = require('../features/health/health.controller');
 const healthRoutes = require('../features/health/health.routes');
 const userRoutes = require('../features/user/user.routes');
 const propertyRoutes = require('../features/property/property.routes');
@@ -11,6 +12,7 @@ const reviewRoutes = require('../features/review/review.routes');
 
 const router = Router();
 
+router.get('/', healthController.getApiIndex);
 router.use('/v1', healthRoutes);
 router.use('/v1/users', userRoutes);
 router.use('/v1/properties', propertyRoutes);
