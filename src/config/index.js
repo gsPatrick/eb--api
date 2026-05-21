@@ -66,7 +66,7 @@ const config = {
   rateLimit: {
     enabled: process.env.NODE_ENV !== 'test',
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-    max: Number(process.env.RATE_LIMIT_MAX) || 100,
+    max: Number(process.env.RATE_LIMIT_MAX) || (env === 'production' ? 1000 : 100),
   },
   db: {
     host: process.env.DB_HOST || 'localhost',
