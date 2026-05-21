@@ -166,6 +166,7 @@ async function authenticateSocket(socket, next) {
       socket.handshake.headers?.authorization?.replace('Bearer ', '');
 
     if (!token) {
+      console.warn('[socket.io] auth missing token', `ip=${socket.handshake.address}`);
       return next(new Error('UNAUTHORIZED'));
     }
 
@@ -175,12 +176,14 @@ async function authenticateSocket(socket, next) {
     });
 
     if (!user || !user.active) {
+      console.warn('[socket.io] auth inactive or missing user', `ip=${socket.handshake.address}`);
       return next(new Error('UNAUTHORIZED'));
     }
 
     socket.user = user;
     next();
-  } catch {
+  } catch (error) {
+    console.warn('[socket.io] auth failed', error?.message || 'UNAUTHORIZED', `ip=${socket.handshake.address}`);
     next(new Error('UNAUTHORIZED'));
   }
 }
@@ -195,6 +198,7 @@ function init(httpServer) {
 
   io.on('connection', (socket) => {
     addConnection(socket.user.id, socket.id, socket.user.role);
+    console.log(`[socket.io] connected user=${socket.user.id} role=${socket.user.role} ip=${socket.handshake.address}`);
 
     socket.emit('connected', {
       userId: socket.user.id,

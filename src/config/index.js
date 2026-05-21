@@ -64,9 +64,12 @@ const config = {
     };
   })(),
   rateLimit: {
-    enabled: process.env.NODE_ENV !== 'test',
+    enabled: process.env.RATE_LIMIT_ENABLED === 'true' && env !== 'test',
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-    max: Number(process.env.RATE_LIMIT_MAX) || (env === 'production' ? 1000 : 100),
+    max: Number(process.env.RATE_LIMIT_MAX) || 100,
+  },
+  requestLog: {
+    enabled: process.env.REQUEST_LOG !== 'false',
   },
   db: {
     host: process.env.DB_HOST || 'localhost',

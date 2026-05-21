@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('./src/config');
 const { createCorsMiddleware, applyOpenCorsHeaders } = require('./src/middlewares/cors.middleware');
+const { requestLogger } = require('./src/middlewares/request-logger.middleware');
 const apiRoutes = require('./src/routes');
 const rootRoutes = require('./src/routes/root.routes');
 const { errorHandler, notFoundHandler } = require('./src/middlewares/error.middleware');
@@ -33,6 +34,7 @@ app.use(
   })
 );
 app.use(createCorsMiddleware());
+app.use(requestLogger);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
@@ -83,6 +85,8 @@ async function start() {
       console.log(`[server] API prefix: ${config.apiPrefix}`);
       console.log(`[server] WebSocket path: /socket.io`);
       console.log(`[server] Environment: ${config.env}`);
+      console.log(`[server] Rate limit: ${config.rateLimit.enabled ? 'enabled' : 'disabled'}`);
+      console.log(`[server] Request log: ${config.requestLog.enabled ? 'enabled' : 'disabled'}`);
     });
   } catch (error) {
     console.error('[startup] Failed:', error.message);
