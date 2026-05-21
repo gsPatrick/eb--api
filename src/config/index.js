@@ -110,6 +110,9 @@ const config = {
     password: process.env.TEST_PROVIDER_PASSWORD || 'patrickprestador',
     locale: process.env.TEST_PROVIDER_LOCALE || 'pt',
   },
+  testDemoBootstrap: {
+    enabled: process.env.TEST_DEMO_BOOTSTRAP !== 'false' && env !== 'test',
+  },
 };
 
 module.exports = config;
