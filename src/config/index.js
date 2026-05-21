@@ -5,6 +5,11 @@ function parseCorsOrigins(value) {
     return { allowAll: true };
   }
 
+  const trimmed = value.trim();
+  if (trimmed.toLowerCase() === 'false' || trimmed.toLowerCase() === 'off') {
+    return { allowAll: false, origins: [] };
+  }
+
   return {
     allowAll: false,
     origins: value.split(',').map((origin) => origin.trim()).filter(Boolean),
@@ -30,10 +35,7 @@ function parseTrustProxy(value, env) {
 
 function buildCorsOptions(corsConfig) {
   if (corsConfig.allowAll) {
-    return {
-      origin: true,
-      credentials: true,
-    };
+    return { origin: '*' };
   }
 
   return {

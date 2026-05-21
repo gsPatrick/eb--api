@@ -1,11 +1,20 @@
 const AppError = require('../utils/app-error');
 const { t } = require('../utils/i18n');
+const config = require('../config');
+const { applyOpenCorsHeaders } = require('./cors.middleware');
 
 function notFoundHandler(req, res, next) {
+  if (config.cors.allowAll) {
+    applyOpenCorsHeaders(req, res);
+  }
   next(new AppError(t('NOT_FOUND', req.locale), 404, 'NOT_FOUND'));
 }
 
 function errorHandler(err, req, res, _next) {
+  if (config.cors.allowAll) {
+    applyOpenCorsHeaders(req, res);
+  }
+
   const locale = req.locale || 'pt';
   const statusCode = err.statusCode || 500;
   const code = err.code || 'INTERNAL_ERROR';

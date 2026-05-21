@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const config = require('./src/config');
-const { createCorsMiddleware } = require('./src/middlewares/cors.middleware');
+const { createCorsMiddleware, applyOpenCorsHeaders } = require('./src/middlewares/cors.middleware');
 const apiRoutes = require('./src/routes');
 const rootRoutes = require('./src/routes/root.routes');
 const { errorHandler, notFoundHandler } = require('./src/middlewares/error.middleware');
@@ -45,6 +45,18 @@ if (config.rateLimit.enabled) {
       max: config.rateLimit.max,
       standardHeaders: true,
       legacyHeaders: false,
+      handler: (req, res) => {
+        if (config.cors.allowAll) {
+          applyOpenCorsHeaders(req, res);
+        }
+        res.status(429).json({
+          success: false,
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests. Please try again later.',
+          },
+        });
+      },
     })
   );
 }
