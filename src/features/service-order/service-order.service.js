@@ -214,6 +214,22 @@ async function listServiceOrders({ actor, status, page = 1, limit = 20, locale =
   };
 }
 
+async function getServiceOrder(id, actor, locale = 'pt') {
+  const order = await getOrderOrFail(id, locale);
+
+  if (actor.role === USER_ROLES.PROVIDER) {
+    assertProviderOwnership(order, actor, locale);
+  } else if (actor.role === USER_ROLES.CLIENT) {
+    if (order.property?.clientId !== actor.id) {
+      throw new AppError(t('FORBIDDEN', locale), 403, 'FORBIDDEN');
+    }
+  } else if (actor.role !== USER_ROLES.ADMIN) {
+    throw new AppError(t('FORBIDDEN', locale), 403, 'FORBIDDEN');
+  }
+
+  return order;
+}
+
 async function assignProvider(orderId, providerId, locale) {
   if (!providerId) {
     throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
@@ -380,6 +396,7 @@ async function checkOut(orderId, { lat, long, afterPhotos }, actor, locale) {
 
 module.exports = {
   listServiceOrders,
+  getServiceOrder,
   assignProvider,
   checkIn,
   addExtra,

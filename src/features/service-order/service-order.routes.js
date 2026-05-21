@@ -44,6 +44,12 @@ router.get(
   serviceOrderController.list
 );
 
+router.get(
+  '/:id',
+  authorize(USER_ROLES.ADMIN, USER_ROLES.CLIENT, USER_ROLES.PROVIDER),
+  serviceOrderController.getById
+);
+
 router.patch(
   '/:id/assign',
   authorize(USER_ROLES.ADMIN),

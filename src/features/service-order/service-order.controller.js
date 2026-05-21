@@ -20,6 +20,16 @@ const list = catchAsync(async (req, res) => {
   sendSuccess(res, { data: result.items, meta: result.meta });
 });
 
+const getById = catchAsync(async (req, res) => {
+  const order = await serviceOrderService.getServiceOrder(
+    req.params.id,
+    req.user,
+    req.locale
+  );
+
+  sendSuccess(res, { data: { order } });
+});
+
 const assign = catchAsync(async (req, res) => {
   const order = await serviceOrderService.assignProvider(
     req.params.id,
@@ -81,6 +91,7 @@ const checkOut = catchAsync(async (req, res) => {
 
 module.exports = {
   list,
+  getById,
   assign,
   checkIn,
   addExtra,

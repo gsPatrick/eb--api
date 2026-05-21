@@ -9,6 +9,7 @@ const inventoryRoutes = require('../features/inventory/inventory.routes');
 const contractRoutes = require('../features/contract/contract.routes');
 const reportRoutes = require('../features/report/report.routes');
 const reviewRoutes = require('../features/review/review.routes');
+const geocodingRoutes = require('../features/geocoding/geocoding.routes');
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/v1/inventory', inventoryRoutes);
 router.use('/v1/contracts', contractRoutes);
 router.use('/v1/reports', reportRoutes);
 router.use('/v1/reviews', reviewRoutes);
+router.use('/v1/geocoding', geocodingRoutes);
 
 module.exports = router;
