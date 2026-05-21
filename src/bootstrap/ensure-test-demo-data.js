@@ -184,6 +184,9 @@ async function ensureTestDemoData() {
   );
 
   console.log(`[bootstrap] Local demo property: ${local.property.name}`);
+  console.log(
+    `[bootstrap] Local coords: ${local.property.latitude}, ${local.property.longitude}`
+  );
   console.log(`[bootstrap] Local order today: ${local.order.id} → ${provider.email}`);
 }
 

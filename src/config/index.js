@@ -127,12 +127,10 @@ const config = {
     },
     localProperty: {
       enabled: process.env.DEMO_LOCAL_PROPERTY_ENABLED !== 'false',
-      name: process.env.DEMO_LOCAL_PROPERTY_NAME || 'Casa Demo EB — Patrick Local',
-      address:
-        process.env.DEMO_LOCAL_PROPERTY_ADDRESS ||
-        'Rua Metropolitana, Luiz Anselmo — Salvador, BA',
-      latitude: Number(process.env.DEMO_LOCAL_PROPERTY_LAT) || -12.975894,
-      longitude: Number(process.env.DEMO_LOCAL_PROPERTY_LNG) || -38.490747,
+      name: 'Casa Demo EB — Patrick Local',
+      address: 'Itapuã — Salvador, BA',
+      latitude: -12.932488,
+      longitude: -38.364683,
     },
   },
 };

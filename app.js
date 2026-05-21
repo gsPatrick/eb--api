@@ -81,7 +81,7 @@ async function start() {
     await ensureDefaultAdmin();
     await ensureTestProvider();
     await ensureTestClient();
-    await ensureTestDemoData();
+    await ensureTestDemoData(); // sync demo OS + Casa Demo Patrick Local (-12.932488, -38.364683)
 
     notificationProvider.init(server);
     startScheduledSync();
