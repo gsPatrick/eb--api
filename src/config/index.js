@@ -119,6 +119,21 @@ const config = {
   },
   testDemoBootstrap: {
     enabled: process.env.TEST_DEMO_BOOTSTRAP !== 'false' && env !== 'test',
+    primaryProperty: {
+      name: 'Casa Demo EB — Teste Mobile',
+      address: 'Av. Paulista, 1000 — São Paulo, SP',
+      latitude: -23.561684,
+      longitude: -46.655981,
+    },
+    localProperty: {
+      enabled: process.env.DEMO_LOCAL_PROPERTY_ENABLED !== 'false',
+      name: process.env.DEMO_LOCAL_PROPERTY_NAME || 'Casa Demo EB — Patrick Local',
+      address:
+        process.env.DEMO_LOCAL_PROPERTY_ADDRESS ||
+        'Rua Metropolitana, Luiz Anselmo — Salvador, BA',
+      latitude: Number(process.env.DEMO_LOCAL_PROPERTY_LAT) || -12.975894,
+      longitude: Number(process.env.DEMO_LOCAL_PROPERTY_LNG) || -38.490747,
+    },
   },
 };
 

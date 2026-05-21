@@ -12,7 +12,6 @@ const {
 } = require('../config/constants');
 const config = require('../config');
 
-const DEMO_PROPERTY_NAME = 'Casa Demo EB — Teste Mobile';
 const LEGACY_DEMO_CLIENT_EMAIL = 'demo.client@ebservices.local';
 
 async function resolveDemoClient() {
@@ -35,29 +34,34 @@ async function resolveDemoClient() {
   return client;
 }
 
-async function ensureDemoProperty(clientId) {
-  let property = await Property.findOne({ where: { name: DEMO_PROPERTY_NAME } });
+async function ensureDemoProperty(clientId, spec, { syncCoordinates = false } = {}) {
+  let property = await Property.findOne({ where: { name: spec.name } });
 
   if (property) {
-    await property.update({
+    const updates = {
       clientId,
       status: PROPERTY_STATUSES.ACTIVE,
-      address: 'Av. Paulista, 1000 — São Paulo, SP',
-      latitude: -23.561684,
-      longitude: -46.655981,
       defaultCleaningPrice: 180,
-    });
+    };
+
+    if (syncCoordinates) {
+      updates.address = spec.address;
+      updates.latitude = spec.latitude;
+      updates.longitude = spec.longitude;
+    }
+
+    await property.update(updates);
     return property;
   }
 
   return Property.create({
-    name: DEMO_PROPERTY_NAME,
-    address: 'Av. Paulista, 1000 — São Paulo, SP',
-    description: 'Propriedade de demonstração para testes do app prestador.',
+    name: spec.name,
+    address: spec.address,
+    description: spec.description || 'Propriedade de demonstração para testes do app prestador.',
     clientId,
     status: PROPERTY_STATUSES.ACTIVE,
-    latitude: -23.561684,
-    longitude: -46.655981,
+    latitude: spec.latitude,
+    longitude: spec.longitude,
     defaultCleaningPrice: 180,
     metadata: {},
   });
@@ -125,6 +129,14 @@ async function ensureDemoOrder(propertyId, providerId) {
   });
 }
 
+async function ensurePropertyBundle(clientId, providerId, spec, options = {}) {
+  const property = await ensureDemoProperty(clientId, spec, options);
+  await ensureDemoInventory(property.id);
+  const order = await ensureDemoOrder(property.id, providerId);
+
+  return { property, order };
+}
+
 async function ensureTestDemoData() {
   if (!config.testDemoBootstrap.enabled) {
     return;
@@ -146,14 +158,33 @@ async function ensureTestDemoData() {
     return;
   }
 
-  const property = await ensureDemoProperty(client.id);
-  await ensureDemoInventory(property.id);
-  const order = await ensureDemoOrder(property.id, provider.id);
+  const { primaryProperty, localProperty } = config.testDemoBootstrap;
+
+  const primary = await ensurePropertyBundle(client.id, provider.id, primaryProperty, {
+    syncCoordinates: false,
+  });
 
   console.log('[bootstrap] Demo data ready for mobile QA');
   console.log(`[bootstrap] Client: ${client.email}`);
-  console.log(`[bootstrap] Property: ${property.name}`);
-  console.log(`[bootstrap] Order today: ${order.id} → ${provider.email}`);
+  console.log(`[bootstrap] Property: ${primary.property.name}`);
+  console.log(`[bootstrap] Order today: ${primary.order.id} → ${provider.email}`);
+
+  if (!localProperty.enabled) {
+    return;
+  }
+
+  const local = await ensurePropertyBundle(
+    client.id,
+    provider.id,
+    {
+      ...localProperty,
+      description: 'Segunda propriedade demo para testes de geofence na sua localização.',
+    },
+    { syncCoordinates: true }
+  );
+
+  console.log(`[bootstrap] Local demo property: ${local.property.name}`);
+  console.log(`[bootstrap] Local order today: ${local.order.id} → ${provider.email}`);
 }
 
 module.exports = {

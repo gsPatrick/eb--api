@@ -9,7 +9,8 @@
     "migrate": "npx sequelize-cli db:migrate",
     "migrate:undo": "npx sequelize-cli db:migrate:undo",
     "seed": "npx sequelize-cli db:seed:all",
-    "smoke:test": "node scripts/smoke-test.js"
+    "smoke:test": "node scripts/smoke-test.js",
+    "demo:location": "node scripts/set-demo-location.js"
   },
   "engines": {
     "node": ">=18.0.0"
