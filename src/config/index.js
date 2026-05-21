@@ -92,6 +92,13 @@ const config = {
   geofence: {
     maxDistanceMeters: Number(process.env.GEOFENCE_MAX_DISTANCE_METERS) || 200,
   },
+  adminBootstrap: {
+    enabled: process.env.ADMIN_BOOTSTRAP !== 'false' && env !== 'test',
+    name: process.env.ADMIN_NAME || 'EB Admin',
+    email: process.env.ADMIN_EMAIL || 'admin@ebservices.local',
+    password: process.env.ADMIN_PASSWORD || 'Admin@EB2026',
+    locale: process.env.ADMIN_LOCALE || 'pt',
+  },
 };
 
 module.exports = config;

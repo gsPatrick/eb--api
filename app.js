@@ -16,6 +16,7 @@ const { sequelize } = require('./src/models');
 const { startScheduledSync } = require('./src/features/property/property-sync.service');
 const { ensureUploadDir, ensureAvatarDir } = require('./src/utils/storage');
 const notificationProvider = require('./src/providers/notification/notification.provider');
+const { ensureDefaultAdmin } = require('./src/bootstrap/ensure-default-admin');
 
 ensureUploadDir();
 ensureAvatarDir();
@@ -53,6 +54,8 @@ async function start() {
   try {
     await sequelize.authenticate();
     console.log('[db] PostgreSQL connection established');
+
+    await ensureDefaultAdmin();
 
     notificationProvider.init(server);
     startScheduledSync();
