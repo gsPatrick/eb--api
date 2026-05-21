@@ -54,9 +54,10 @@ const remove = catchAsync(async (req, res) => {
 });
 
 const updateQuantity = catchAsync(async (req, res) => {
+  const quantity = req.body.currentQuantity ?? req.body.quantity;
   const item = await inventoryService.updateQuantity(
     req.params.id,
-    req.body.currentQuantity,
+    quantity,
     req.user,
     req.locale
   );

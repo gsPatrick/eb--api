@@ -110,6 +110,13 @@ const config = {
     password: process.env.TEST_PROVIDER_PASSWORD || 'patrickprestador',
     locale: process.env.TEST_PROVIDER_LOCALE || 'pt',
   },
+  testClientBootstrap: {
+    enabled: process.env.TEST_CLIENT_BOOTSTRAP !== 'false' && env !== 'test',
+    name: process.env.TEST_CLIENT_NAME || 'Patrick Cliente',
+    email: process.env.TEST_CLIENT_EMAIL || 'patrickcliente@gmail.com',
+    password: process.env.TEST_CLIENT_PASSWORD || 'patrickcliente',
+    locale: process.env.TEST_CLIENT_LOCALE || 'pt',
+  },
   testDemoBootstrap: {
     enabled: process.env.TEST_DEMO_BOOTSTRAP !== 'false' && env !== 'test',
   },

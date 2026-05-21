@@ -103,7 +103,9 @@ async function assertProviderCanUpdateQuantity(item, actor, locale) {
     where: {
       propertyId: item.propertyId,
       providerId: actor.id,
-      status: SERVICE_ORDER_STATUSES.IN_PROGRESS,
+      status: {
+        [Op.in]: [SERVICE_ORDER_STATUSES.PENDING, SERVICE_ORDER_STATUSES.IN_PROGRESS],
+      },
     },
   });
 

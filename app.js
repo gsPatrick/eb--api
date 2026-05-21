@@ -19,6 +19,7 @@ const { ensureUploadDir, ensureAvatarDir } = require('./src/utils/storage');
 const notificationProvider = require('./src/providers/notification/notification.provider');
 const { ensureDefaultAdmin } = require('./src/bootstrap/ensure-default-admin');
 const { ensureTestProvider } = require('./src/bootstrap/ensure-test-provider');
+const { ensureTestClient } = require('./src/bootstrap/ensure-test-client');
 const { ensureTestDemoData } = require('./src/bootstrap/ensure-test-demo-data');
 const { runMigrations } = require('./src/bootstrap/run-migrations');
 
@@ -79,6 +80,7 @@ async function start() {
     await runMigrations();
     await ensureDefaultAdmin();
     await ensureTestProvider();
+    await ensureTestClient();
     await ensureTestDemoData();
 
     notificationProvider.init(server);

@@ -1,4 +1,3 @@
-const bcrypt = require('bcryptjs');
 const {
   User,
   Property,
@@ -13,36 +12,27 @@ const {
 } = require('../config/constants');
 const config = require('../config');
 
-const SALT_ROUNDS = 12;
 const DEMO_PROPERTY_NAME = 'Casa Demo EB — Teste Mobile';
-const DEMO_CLIENT_EMAIL = 'demo.client@ebservices.local';
+const LEGACY_DEMO_CLIENT_EMAIL = 'demo.client@ebservices.local';
 
-async function ensureDemoClient() {
-  const normalizedEmail = DEMO_CLIENT_EMAIL;
-  const existing = await User.findOne({ where: { email: normalizedEmail } });
+async function resolveDemoClient() {
+  const clientEmail = (config.testClientBootstrap.email || '').toLowerCase();
+  const client = await User.findOne({
+    where: { email: clientEmail, role: USER_ROLES.CLIENT, active: true },
+  });
 
-  if (existing) {
-    if (existing.role !== USER_ROLES.CLIENT || !existing.active) {
-      await existing.update({
-        role: USER_ROLES.CLIENT,
-        active: true,
-        name: existing.name || 'Cliente Demo EB',
-        locale: 'pt',
-      });
-    }
-    return existing;
+  if (!client) {
+    return null;
   }
 
-  const passwordHash = await bcrypt.hash('DemoClient2026', SALT_ROUNDS);
+  const legacyClient = await User.findOne({ where: { email: LEGACY_DEMO_CLIENT_EMAIL } });
+  if (legacyClient && legacyClient.id !== client.id) {
+    await Property.update({ clientId: client.id }, { where: { clientId: legacyClient.id } });
+    await legacyClient.update({ active: false });
+    console.log('[bootstrap] Demo property migrated to test client');
+  }
 
-  return User.create({
-    name: 'Cliente Demo EB',
-    email: normalizedEmail,
-    passwordHash,
-    role: USER_ROLES.CLIENT,
-    locale: 'pt',
-    active: true,
-  });
+  return client;
 }
 
 async function ensureDemoProperty(clientId) {
@@ -150,12 +140,18 @@ async function ensureTestDemoData() {
     return;
   }
 
-  const client = await ensureDemoClient();
+  const client = await resolveDemoClient();
+  if (!client) {
+    console.log('[bootstrap] Demo data skipped — test client not found/active');
+    return;
+  }
+
   const property = await ensureDemoProperty(client.id);
   await ensureDemoInventory(property.id);
   const order = await ensureDemoOrder(property.id, provider.id);
 
   console.log('[bootstrap] Demo data ready for mobile QA');
+  console.log(`[bootstrap] Client: ${client.email}`);
   console.log(`[bootstrap] Property: ${property.name}`);
   console.log(`[bootstrap] Order today: ${order.id} → ${provider.email}`);
 }
