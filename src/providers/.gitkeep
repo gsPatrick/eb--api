@@ -1,0 +1,10 @@
+/**
+ * Placeholder for external HTTP clients (iCal/Airbnb, email, push, etc.).
+ * Each integration gets its own subfolder with a dedicated client module.
+ *
+ * Example future structure:
+ *   providers/ical/ical.client.js
+ *   providers/email/email.client.js
+ */
+
+module.exports = {};

@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+coverage/
+.nyc_output/
+dist/
+logs/*.log
+public/uploads/**/*
+!public/uploads/**/.gitkeep
