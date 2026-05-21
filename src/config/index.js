@@ -31,9 +31,7 @@ function parseTrustProxy(value, env) {
 function buildCorsOptions(corsConfig) {
   if (corsConfig.allowAll) {
     return {
-      origin: (origin, callback) => {
-        callback(null, origin || true);
-      },
+      origin: true,
       credentials: true,
     };
   }

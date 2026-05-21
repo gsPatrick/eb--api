@@ -17,7 +17,16 @@ async function ensureDefaultAdmin() {
   const existing = await User.findOne({ where: { email: normalizedEmail } });
 
   if (existing) {
-    console.log('[bootstrap] Default admin ready');
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    await existing.update({
+      name,
+      locale,
+      role: USER_ROLES.ADMIN,
+      active: true,
+      passwordHash,
+    });
+
+    console.log('[bootstrap] Default admin synced from env');
     console.log(`[bootstrap] Login: POST ${loginPath}`);
     console.log(`[bootstrap] Email: ${normalizedEmail}`);
     console.log(`[bootstrap] Password: ${password}`);

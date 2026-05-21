@@ -3,11 +3,11 @@ require('dotenv').config();
 const path = require('path');
 const http = require('http');
 const express = require('express');
-const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const config = require('./src/config');
+const { createCorsMiddleware } = require('./src/middlewares/cors.middleware');
 const apiRoutes = require('./src/routes');
 const rootRoutes = require('./src/routes/root.routes');
 const { errorHandler, notFoundHandler } = require('./src/middlewares/error.middleware');
@@ -27,8 +27,12 @@ const server = http.createServer(app);
 
 app.set('trust proxy', config.trustProxy);
 
-app.use(helmet());
-app.use(cors(config.cors.options));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+app.use(createCorsMiddleware());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));

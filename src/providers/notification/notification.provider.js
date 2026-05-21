@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const config = require('../../config');
+const { getSocketCorsOptions } = require('../../middlewares/cors.middleware');
 const { User } = require('../../models');
 const { USER_ROLES } = require('../../config/constants');
 
@@ -186,7 +187,7 @@ async function authenticateSocket(socket, next) {
 
 function init(httpServer) {
   io = new Server(httpServer, {
-    cors: config.cors.options,
+    cors: getSocketCorsOptions(),
     path: '/socket.io',
   });
 
