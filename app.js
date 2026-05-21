@@ -22,15 +22,10 @@ ensureAvatarDir();
 const app = express();
 const server = http.createServer(app);
 
-app.set('trust proxy', true);
+app.set('trust proxy', config.trustProxy);
 
 app.use(helmet());
-app.use(
-  cors({
-    origin: config.cors.origins,
-    credentials: true,
-  })
-);
+app.use(cors(config.cors.options));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));

@@ -1,25 +1,68 @@
 const { DEFAULT_LOCALE } = require('./constants');
 
 function parseCorsOrigins(value) {
-  if (!value || value.trim() === '*') {
-    return true;
+  if (!value || value.trim() === '*' || value.trim().toLowerCase() === 'all') {
+    return { allowAll: true };
   }
 
-  return value.split(',').map((origin) => origin.trim()).filter(Boolean);
+  return {
+    allowAll: false,
+    origins: value.split(',').map((origin) => origin.trim()).filter(Boolean),
+  };
 }
 
+function parseTrustProxy(value, env) {
+  if (value === undefined || value === '') {
+    return env === 'production' ? 1 : false;
+  }
+
+  if (value === 'true') {
+    return 1;
+  }
+
+  if (value === 'false') {
+    return false;
+  }
+
+  const hops = Number(value);
+  return Number.isNaN(hops) ? value : hops;
+}
+
+function buildCorsOptions(corsConfig) {
+  if (corsConfig.allowAll) {
+    return {
+      origin: (origin, callback) => {
+        callback(null, origin || true);
+      },
+      credentials: true,
+    };
+  }
+
+  return {
+    origin: corsConfig.origins,
+    credentials: true,
+  };
+}
+
+const env = process.env.NODE_ENV || 'development';
+
 const config = {
-  env: process.env.NODE_ENV || 'development',
+  env,
   port: Number(process.env.PORT) || 3000,
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY, env),
   apiPrefix: process.env.APP_API_PREFIX || '/api',
   defaultLocale: process.env.DEFAULT_LOCALE || DEFAULT_LOCALE,
   jwt: {
     secret: process.env.JWT_SECRET || 'development-secret-change-in-production',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
-  cors: {
-    origins: parseCorsOrigins(process.env.CORS_ORIGINS),
-  },
+  cors: (() => {
+    const parsed = parseCorsOrigins(process.env.CORS_ORIGINS);
+    return {
+      ...parsed,
+      options: buildCorsOptions(parsed),
+    };
+  })(),
   rateLimit: {
     enabled: process.env.NODE_ENV !== 'test',
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,

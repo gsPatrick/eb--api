@@ -186,10 +186,7 @@ async function authenticateSocket(socket, next) {
 
 function init(httpServer) {
   io = new Server(httpServer, {
-    cors: {
-      origin: config.cors.origins,
-      credentials: true,
-    },
+    cors: config.cors.options,
     path: '/socket.io',
   });
 
