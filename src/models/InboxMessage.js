@@ -40,6 +40,19 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      messageType: {
+        type: DataTypes.STRING(32),
+        allowNull: false,
+        defaultValue: 'general',
+      },
+      attachmentUrl: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+      },
+      attachmentName: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
     },
     {
       sequelize,

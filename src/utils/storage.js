@@ -4,8 +4,10 @@ const crypto = require('crypto');
 
 const UPLOAD_SUBDIR = 'os';
 const AVATAR_SUBDIR = 'avatars';
+const MESSAGES_SUBDIR = 'messages';
 const UPLOAD_RELATIVE_PATH = `/uploads/${UPLOAD_SUBDIR}`;
 const AVATAR_RELATIVE_PATH = `/uploads/${AVATAR_SUBDIR}`;
+const MESSAGES_RELATIVE_PATH = `/uploads/${MESSAGES_SUBDIR}`;
 
 function getUploadDir() {
   return path.join(process.cwd(), 'public', 'uploads', UPLOAD_SUBDIR);
@@ -13,6 +15,16 @@ function getUploadDir() {
 
 function getAvatarDir() {
   return path.join(process.cwd(), 'public', 'uploads', AVATAR_SUBDIR);
+}
+
+function getMessagesDir() {
+  return path.join(process.cwd(), 'public', 'uploads', MESSAGES_SUBDIR);
+}
+
+function ensureMessagesDir() {
+  const dir = getMessagesDir();
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 function ensureUploadDir() {
@@ -33,6 +45,22 @@ function buildPublicUrl(filename) {
 
 function buildAvatarUrl(filename) {
   return `${AVATAR_RELATIVE_PATH}/${filename}`;
+}
+
+function buildMessageAttachmentUrl(filename) {
+  return `${MESSAGES_RELATIVE_PATH}/${filename}`;
+}
+
+function processMessageAttachmentFile(file) {
+  if (!file) {
+    return null;
+  }
+
+  ensureMessagesDir();
+  return {
+    url: buildMessageAttachmentUrl(file.filename),
+    name: file.originalname || file.filename,
+  };
 }
 
 function saveBuffer(buffer, originalName) {
@@ -94,14 +122,19 @@ function parsePhotoUrls(value) {
 module.exports = {
   getUploadDir,
   getAvatarDir,
+  getMessagesDir,
   ensureUploadDir,
   ensureAvatarDir,
+  ensureMessagesDir,
   buildPublicUrl,
   buildAvatarUrl,
+  buildMessageAttachmentUrl,
   saveBuffer,
   processMulterFiles,
   processAvatarFile,
+  processMessageAttachmentFile,
   parsePhotoUrls,
   UPLOAD_RELATIVE_PATH,
   AVATAR_RELATIVE_PATH,
+  MESSAGES_RELATIVE_PATH,
 };

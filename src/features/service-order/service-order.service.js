@@ -15,6 +15,7 @@ const {
   User,
 } = require('../../models');
 const notificationProvider = require('../../providers/notification/notification.provider');
+const messageService = require('../message/message.service');
 
 const orderIncludes = [
   {
@@ -741,6 +742,16 @@ async function issueProviderReceipt(order, locale) {
 
   const updatedOrder = await getOrderOrFail(order.id, locale);
   notificationProvider.notifyProviderReceipt(updatedOrder);
+  await messageService.createAutomatedInboxMessage({
+    recipientId: order.providerId,
+    subject: `Payment receipt — ${order.property?.name || 'Cleaning'}`,
+    body: `Your payout receipt is available. Amount: USD ${Number(order.providerPayoutAmount || 0).toFixed(2)}.`,
+    messageType: messageService.MESSAGE_TYPES.RECEIPT,
+    attachmentUrl: pdf.url,
+    attachmentName: `receipt-${order.id.slice(0, 8)}.pdf`,
+    serviceOrderId: order.id,
+    propertyId: order.propertyId,
+  });
 
   return updatedOrder;
 }
@@ -760,6 +771,16 @@ async function generateInvoice(orderId, locale) {
 
   if (order.property?.clientId) {
     notificationProvider.notifyClientInvoice(updatedOrder);
+    await messageService.createAutomatedInboxMessage({
+      recipientId: order.property.clientId,
+      subject: `Invoice ${invoiceNumber} — ${order.property?.name || 'Property'}`,
+      body: `Your cleaning invoice is ready. Total amount: USD ${Number(order.totalPrice || 0).toFixed(2)}.`,
+      messageType: messageService.MESSAGE_TYPES.INVOICE,
+      attachmentUrl: pdf.url,
+      attachmentName: `invoice-${invoiceNumber}.pdf`,
+      serviceOrderId: order.id,
+      propertyId: order.propertyId,
+    });
   }
 
   return {
@@ -835,6 +856,14 @@ async function sendCleaningReminder(orderId, locale) {
   }
 
   notificationProvider.notifyCleaningReminder(order, client);
+  await messageService.createAutomatedInboxMessage({
+    recipientId: client.id,
+    subject: `Cleaning reminder — ${order.property?.name || 'your property'}`,
+    body: `Your cleaning is scheduled for ${order.scheduledDate}. Reply here if you need any extra services.`,
+    messageType: messageService.MESSAGE_TYPES.REMINDER,
+    serviceOrderId: order.id,
+    propertyId: order.propertyId,
+  });
 
   return {
     sent: true,

@@ -1,6 +1,7 @@
 const catchAsync = require('../../utils/catch-async');
 const { sendSuccess, sendCreated } = require('../../utils/response');
 const { t } = require('../../utils/i18n');
+const { processMessageAttachmentFile } = require('../../utils/storage');
 const messageService = require('./message.service');
 
 const list = catchAsync(async (req, res) => {
@@ -25,7 +26,16 @@ const unreadCount = catchAsync(async (req, res) => {
 });
 
 const create = catchAsync(async (req, res) => {
-  const message = await messageService.createMessage(req.user, req.body, req.locale);
+  const attachment = processMessageAttachmentFile(req.file);
+  const message = await messageService.createMessage(
+    req.user,
+    {
+      ...req.body,
+      attachmentUrl: attachment?.url || req.body.attachmentUrl || null,
+      attachmentName: attachment?.name || req.body.attachmentName || null,
+    },
+    req.locale
+  );
   sendCreated(res, {
     message: t('MESSAGE_SENT_SUCCESS', req.locale),
     data: { message },

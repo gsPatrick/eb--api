@@ -1,9 +1,15 @@
-const { Op } = require('sequelize');
 const AppError = require('../../utils/app-error');
 const { t } = require('../../utils/i18n');
 const { USER_ROLES } = require('../../config/constants');
 const { InboxMessage, User, Property, ServiceOrder } = require('../../models');
 const notificationProvider = require('../../providers/notification/notification.provider');
+
+const MESSAGE_TYPES = {
+  GENERAL: 'general',
+  INVOICE: 'invoice',
+  RECEIPT: 'receipt',
+  REMINDER: 'reminder',
+};
 
 const userInclude = {
   model: User,
@@ -74,6 +80,7 @@ async function resolveRecipientId(actor, payloadRecipientId, locale) {
 }
 
 async function listMessages({ actor, unreadOnly, page = 1, limit = 30, locale }) {
+  const { Op } = require('sequelize');
   const where = {};
 
   if (actor.role === USER_ROLES.ADMIN) {
@@ -120,7 +127,15 @@ async function getUnreadCount(actor) {
 }
 
 async function createMessage(actor, payload, locale) {
-  const { subject, body, serviceOrderId, propertyId } = payload;
+  const {
+    subject,
+    body,
+    serviceOrderId,
+    propertyId,
+    attachmentUrl,
+    attachmentName,
+    messageType = MESSAGE_TYPES.GENERAL,
+  } = payload;
 
   if (!subject?.trim() || !body?.trim()) {
     throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
@@ -146,6 +161,10 @@ async function createMessage(actor, payload, locale) {
     }
   }
 
+  const safeMessageType = Object.values(MESSAGE_TYPES).includes(messageType)
+    ? messageType
+    : MESSAGE_TYPES.GENERAL;
+
   const message = await InboxMessage.create({
     senderId: actor.id,
     recipientId: recipient.id,
@@ -153,11 +172,59 @@ async function createMessage(actor, payload, locale) {
     body: body.trim(),
     serviceOrderId: serviceOrderId || null,
     propertyId: propertyId || null,
+    messageType: safeMessageType,
+    attachmentUrl: attachmentUrl || null,
+    attachmentName: attachmentName || null,
   });
 
   const full = await InboxMessage.findByPk(message.id, { include: contextIncludes });
   notificationProvider.notifyInboxMessage(full, actor, recipient);
 
+  return full;
+}
+
+async function createAutomatedInboxMessage({
+  recipientId,
+  subject,
+  body,
+  messageType = MESSAGE_TYPES.GENERAL,
+  attachmentUrl = null,
+  attachmentName = null,
+  serviceOrderId = null,
+  propertyId = null,
+}) {
+  const adminId = await getDefaultAdminId();
+  if (!adminId || !recipientId) {
+    return null;
+  }
+
+  const [admin, recipient] = await Promise.all([
+    User.findByPk(adminId),
+    User.findByPk(recipientId),
+  ]);
+
+  if (!admin || !recipient?.active) {
+    return null;
+  }
+
+  const safeMessageType = Object.values(MESSAGE_TYPES).includes(messageType)
+    ? messageType
+    : MESSAGE_TYPES.GENERAL;
+
+  const message = await InboxMessage.create({
+    senderId: admin.id,
+    recipientId: recipient.id,
+    subject: subject.trim(),
+    body: body.trim(),
+    serviceOrderId: serviceOrderId || null,
+    propertyId: propertyId || null,
+    messageType: safeMessageType,
+    attachmentUrl: attachmentUrl || null,
+    attachmentName: attachmentName || null,
+  });
+
+  const full = await InboxMessage.findByPk(message.id, { include: contextIncludes });
+  notificationProvider.notifyInboxMessage(full, admin, recipient);
   return full;
 }
 
@@ -180,8 +247,10 @@ async function markAsRead(messageId, actor, locale) {
 }
 
 module.exports = {
+  MESSAGE_TYPES,
   listMessages,
   getUnreadCount,
   createMessage,
+  createAutomatedInboxMessage,
   markAsRead,
 };
