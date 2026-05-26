@@ -5,9 +5,11 @@ const {
   USER_ROLES,
   PROPERTY_STATUSES,
   SERVICE_ORDER_STATUSES,
+  CLEANING_TYPES,
 } = require('../../config/constants');
 const { Property, ServiceOrder, User } = require('../../models');
 const icalProvider = require('../../providers/ical/ical.provider');
+const { splitOrderFinancials } = require('../../utils/financial');
 
 const clientInclude = {
   model: User,
@@ -212,7 +214,7 @@ async function getPropertyById(id, actor, locale) {
   return getPropertyOrFail(id, actor, locale);
 }
 
-async function listProperties({ actor, status, clientId, page = 1, limit = 20 }) {
+async function listProperties({ actor, status, clientId, search, page = 1, limit = 20 }) {
   const accessFilter = buildAccessFilter(actor);
 
   if (accessFilter === null) {
@@ -230,6 +232,15 @@ async function listProperties({ actor, status, clientId, page = 1, limit = 20 })
 
   if (actor.role === USER_ROLES.ADMIN && clientId) {
     where.clientId = clientId;
+  }
+
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    where[Op.or] = [
+      { name: { [Op.iLike]: term } },
+      { address: { [Op.iLike]: term } },
+      { description: { [Op.iLike]: term } },
+    ];
   }
 
   const offset = (page - 1) * limit;
@@ -301,15 +312,19 @@ async function syncCalendar(propertyId, locale = 'pt') {
     }
 
     try {
+      const financials = splitOrderFinancials(basePrice);
       const order = await ServiceOrder.create({
         propertyId: property.id,
         scheduledDate,
+        cleaningType: CLEANING_TYPES.REGULAR_AIRBNB,
         status: SERVICE_ORDER_STATUSES.PENDING,
         beforePhotos: [],
         afterPhotos: [],
         basePrice,
         extrasTotalPrice: 0,
-        totalPrice: basePrice,
+        totalPrice: financials.totalPrice,
+        commissionAmount: financials.commissionAmount,
+        providerPayoutAmount: financials.providerPayoutAmount,
       });
 
       created += 1;

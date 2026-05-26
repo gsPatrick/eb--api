@@ -47,6 +47,9 @@ const {
   Contract,
   ContractAcceptance,
   Review,
+  InboxMessage,
+  FieldReport,
+  RecurringSchedule,
 } = db;
 
 // --- Users ---
@@ -88,6 +91,27 @@ ContractAcceptance.belongsTo(Contract, { as: 'contract', foreignKey: 'contractId
 Review.belongsTo(ServiceOrder, { as: 'serviceOrder', foreignKey: 'serviceOrderId' });
 Review.belongsTo(User, { as: 'reviewer', foreignKey: 'reviewerId' });
 Review.belongsTo(User, { as: 'reviewed', foreignKey: 'reviewedId' });
+
+// --- Inbox Messages ---
+InboxMessage.belongsTo(User, { as: 'sender', foreignKey: 'senderId' });
+InboxMessage.belongsTo(User, { as: 'recipient', foreignKey: 'recipientId' });
+InboxMessage.belongsTo(ServiceOrder, { as: 'serviceOrder', foreignKey: 'serviceOrderId' });
+InboxMessage.belongsTo(Property, { as: 'property', foreignKey: 'propertyId' });
+User.hasMany(InboxMessage, { as: 'sentMessages', foreignKey: 'senderId' });
+User.hasMany(InboxMessage, { as: 'receivedMessages', foreignKey: 'recipientId' });
+
+// --- Field Reports ---
+FieldReport.belongsTo(ServiceOrder, { as: 'serviceOrder', foreignKey: 'serviceOrderId' });
+FieldReport.belongsTo(User, { as: 'provider', foreignKey: 'providerId' });
+FieldReport.belongsTo(Property, { as: 'property', foreignKey: 'propertyId' });
+FieldReport.belongsTo(User, { as: 'resolvedBy', foreignKey: 'resolvedById' });
+ServiceOrder.hasMany(FieldReport, { as: 'fieldReports', foreignKey: 'serviceOrderId' });
+Property.hasMany(FieldReport, { as: 'fieldReports', foreignKey: 'propertyId' });
+
+// --- Recurring Schedules ---
+RecurringSchedule.belongsTo(Property, { as: 'property', foreignKey: 'propertyId' });
+RecurringSchedule.belongsTo(User, { as: 'provider', foreignKey: 'providerId' });
+Property.hasMany(RecurringSchedule, { as: 'recurringSchedules', foreignKey: 'propertyId' });
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

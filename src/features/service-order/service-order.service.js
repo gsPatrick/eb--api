@@ -2,7 +2,9 @@ const { Op } = require('sequelize');
 const AppError = require('../../utils/app-error');
 const { t } = require('../../utils/i18n');
 const config = require('../../config');
-const { USER_ROLES, SERVICE_ORDER_STATUSES } = require('../../config/constants');
+const { USER_ROLES, SERVICE_ORDER_STATUSES, CLEANING_TYPES, SERVICE_ORDER_EXTRA_SOURCES, CLIENT_EXTRA_REQUEST_HOURS, PAYMENT_STATUSES, EB_COMMISSION_RATE } = require('../../config/constants');
+const { splitOrderFinancials } = require('../../utils/financial');
+const { generateInvoicePdf, generateReceiptPdf, buildInvoiceNumber } = require('../../utils/pdf-documents');
 const {
   sequelize,
   Sequelize,
@@ -19,6 +21,13 @@ const orderIncludes = [
     model: Property,
     as: 'property',
     attributes: ['id', 'name', 'address', 'clientId', 'status', 'latitude', 'longitude'],
+    include: [
+      {
+        model: User,
+        as: 'client',
+        attributes: ['id', 'name', 'email', 'phone', 'role'],
+      },
+    ],
   },
   {
     model: User,
@@ -41,6 +50,59 @@ const orderIncludes = [
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isValidCleaningType(value) {
+  return Object.values(CLEANING_TYPES).includes(value);
+}
+
+function parseScheduledDate(value, locale) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['scheduledDate'],
+    });
+  }
+  return String(value);
+}
+
+function assertClientExtraRequestWindow(order, locale) {
+  const scheduled = new Date(`${order.scheduledDate}T00:00:00`);
+  const deadline = new Date(scheduled.getTime() - CLIENT_EXTRA_REQUEST_HOURS * 60 * 60 * 1000);
+
+  if (Date.now() > deadline.getTime()) {
+    throw new AppError(t('SERVICE_ORDER_EXTRA_REQUEST_CLOSED', locale), 400, 'SERVICE_ORDER_EXTRA_REQUEST_CLOSED');
+  }
+}
+
+async function attachExtraToOrder(order, serviceExtra, source, locale, transaction) {
+  const existing = await ServiceOrderExtra.findOne({
+    where: {
+      serviceOrderId: order.id,
+      serviceExtraId: serviceExtra.id,
+    },
+    transaction,
+  });
+
+  if (existing) {
+    throw new AppError(
+      t('SERVICE_ORDER_EXTRA_ALREADY_ADDED', locale),
+      409,
+      'SERVICE_ORDER_EXTRA_ALREADY_ADDED'
+    );
+  }
+
+  await ServiceOrderExtra.create(
+    {
+      serviceOrderId: order.id,
+      serviceExtraId: serviceExtra.id,
+      priceAtTime: serviceExtra.defaultPrice,
+      source,
+      requestedAt: source === SERVICE_ORDER_EXTRA_SOURCES.CLIENT_REQUEST ? new Date() : null,
+    },
+    { transaction }
+  );
+
+  await recalculateOrderTotals(order.id, transaction);
 }
 
 function validateCoordinates(lat, long, locale) {
@@ -153,11 +215,14 @@ async function recalculateOrderTotals(orderId, transaction) {
   );
   const basePrice = toNumber(order.basePrice);
   const totalPrice = basePrice + extrasTotalPrice;
+  const financials = splitOrderFinancials(totalPrice);
 
   await order.update(
     {
       extrasTotalPrice,
-      totalPrice,
+      totalPrice: financials.totalPrice,
+      commissionAmount: financials.commissionAmount,
+      providerPayoutAmount: financials.providerPayoutAmount,
     },
     { transaction }
   );
@@ -316,33 +381,13 @@ async function addExtra(orderId, extraId, actor, locale) {
   const transaction = await sequelize.transaction();
 
   try {
-    const existing = await ServiceOrderExtra.findOne({
-      where: {
-        serviceOrderId: order.id,
-        serviceExtraId: extraId,
-      },
-      transaction,
-    });
-
-    if (existing) {
-      throw new AppError(
-        t('SERVICE_ORDER_EXTRA_ALREADY_ADDED', locale),
-        409,
-        'SERVICE_ORDER_EXTRA_ALREADY_ADDED'
-      );
-    }
-
-    await ServiceOrderExtra.create(
-      {
-        serviceOrderId: order.id,
-        serviceExtraId: serviceExtra.id,
-        priceAtTime: serviceExtra.defaultPrice,
-      },
-      { transaction }
+    await attachExtraToOrder(
+      order,
+      serviceExtra,
+      SERVICE_ORDER_EXTRA_SOURCES.PROVIDER_FIELD,
+      locale,
+      transaction
     );
-
-    await recalculateOrderTotals(order.id, transaction);
-
     await transaction.commit();
   } catch (error) {
     await transaction.rollback();
@@ -359,6 +404,249 @@ async function addExtra(orderId, extraId, actor, locale) {
   }
 
   return getOrderOrFail(order.id, locale);
+}
+
+async function requestExtra(orderId, extraId, actor, locale) {
+  if (!extraId) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['extraId'],
+    });
+  }
+
+  if (actor.role !== USER_ROLES.CLIENT) {
+    throw new AppError(t('FORBIDDEN', locale), 403, 'FORBIDDEN');
+  }
+
+  const order = await getOrderOrFail(orderId, locale);
+
+  if (order.property?.clientId !== actor.id) {
+    throw new AppError(t('FORBIDDEN', locale), 403, 'FORBIDDEN');
+  }
+
+  if (order.status !== SERVICE_ORDER_STATUSES.PENDING) {
+    throw new AppError(t('SERVICE_ORDER_INVALID_STATUS', locale), 400, 'SERVICE_ORDER_INVALID_STATUS');
+  }
+
+  assertClientExtraRequestWindow(order, locale);
+
+  const serviceExtra = await ServiceExtra.findByPk(extraId);
+
+  if (!serviceExtra) {
+    throw new AppError(t('SERVICE_EXTRA_NOT_FOUND', locale), 404, 'SERVICE_EXTRA_NOT_FOUND');
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    await attachExtraToOrder(
+      order,
+      serviceExtra,
+      SERVICE_ORDER_EXTRA_SOURCES.CLIENT_REQUEST,
+      locale,
+      transaction
+    );
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      throw new AppError(
+        t('SERVICE_ORDER_EXTRA_ALREADY_ADDED', locale),
+        409,
+        'SERVICE_ORDER_EXTRA_ALREADY_ADDED'
+      );
+    }
+
+    throw error;
+  }
+
+  return getOrderOrFail(order.id, locale);
+}
+
+async function createServiceOrder(payload, locale) {
+  const {
+    propertyId,
+    scheduledDate,
+    cleaningType,
+    estimatedDurationMinutes,
+    providerId,
+    basePrice,
+  } = payload;
+
+  if (!propertyId || !scheduledDate) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['propertyId', 'scheduledDate'],
+    });
+  }
+
+  const parsedDate = parseScheduledDate(scheduledDate, locale);
+  const resolvedCleaningType = cleaningType || CLEANING_TYPES.REGULAR_AIRBNB;
+
+  if (!isValidCleaningType(resolvedCleaningType)) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['cleaningType'],
+    });
+  }
+
+  const property = await Property.findByPk(propertyId);
+
+  if (!property) {
+    throw new AppError(t('PROPERTY_NOT_FOUND', locale), 404, 'PROPERTY_NOT_FOUND');
+  }
+
+  if (property.status !== 'active') {
+    throw new AppError(t('PROPERTY_INACTIVE', locale), 400, 'PROPERTY_INACTIVE');
+  }
+
+  let resolvedProviderId = null;
+  if (providerId) {
+    const provider = await User.findByPk(providerId);
+    if (!provider || provider.role !== USER_ROLES.PROVIDER || !provider.active) {
+      throw new AppError(t('INVALID_PROVIDER', locale), 400, 'INVALID_PROVIDER');
+    }
+    resolvedProviderId = provider.id;
+  }
+
+  const resolvedBasePrice =
+    basePrice !== undefined && basePrice !== null && basePrice !== ''
+      ? toNumber(basePrice)
+      : toNumber(property.defaultCleaningPrice);
+
+  if (resolvedBasePrice < 0) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['basePrice'],
+    });
+  }
+
+  let resolvedDuration = null;
+  if (estimatedDurationMinutes !== undefined && estimatedDurationMinutes !== null && estimatedDurationMinutes !== '') {
+    resolvedDuration = Math.round(toNumber(estimatedDurationMinutes));
+    if (resolvedDuration <= 0) {
+      throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+        fields: ['estimatedDurationMinutes'],
+      });
+    }
+  }
+
+  const initialFinancials = splitOrderFinancials(resolvedBasePrice);
+
+  try {
+    const order = await ServiceOrder.create({
+      propertyId: property.id,
+      providerId: resolvedProviderId,
+      scheduledDate: parsedDate,
+      cleaningType: resolvedCleaningType,
+      estimatedDurationMinutes: resolvedDuration,
+      status: SERVICE_ORDER_STATUSES.PENDING,
+      beforePhotos: [],
+      afterPhotos: [],
+      basePrice: resolvedBasePrice,
+      extrasTotalPrice: 0,
+      totalPrice: initialFinancials.totalPrice,
+      commissionAmount: initialFinancials.commissionAmount,
+      providerPayoutAmount: initialFinancials.providerPayoutAmount,
+      clientPaymentStatus: PAYMENT_STATUSES.PENDING,
+      providerPaymentStatus: PAYMENT_STATUSES.PENDING,
+    });
+
+    if (resolvedProviderId) {
+      const provider = await User.findByPk(resolvedProviderId);
+      const created = await getOrderOrFail(order.id, locale);
+      notificationProvider.notifyOrderAssigned(created, provider);
+      return created;
+    }
+
+    return getOrderOrFail(order.id, locale);
+  } catch (error) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      throw new AppError(t('SERVICE_ORDER_ALREADY_EXISTS', locale), 409, 'SERVICE_ORDER_ALREADY_EXISTS');
+    }
+    throw error;
+  }
+}
+
+async function updateServiceOrder(orderId, payload, locale) {
+  const order = await getOrderOrFail(orderId, locale);
+
+  if (
+    order.status !== SERVICE_ORDER_STATUSES.PENDING &&
+    order.status !== SERVICE_ORDER_STATUSES.IN_PROGRESS
+  ) {
+    throw new AppError(t('SERVICE_ORDER_INVALID_STATUS', locale), 400, 'SERVICE_ORDER_INVALID_STATUS');
+  }
+
+  const updates = {};
+
+  if (payload.scheduledDate !== undefined) {
+    updates.scheduledDate = parseScheduledDate(payload.scheduledDate, locale);
+  }
+
+  if (payload.cleaningType !== undefined) {
+    if (!isValidCleaningType(payload.cleaningType)) {
+      throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+        fields: ['cleaningType'],
+      });
+    }
+    updates.cleaningType = payload.cleaningType;
+  }
+
+  if (payload.estimatedDurationMinutes !== undefined) {
+    if (payload.estimatedDurationMinutes === null || payload.estimatedDurationMinutes === '') {
+      updates.estimatedDurationMinutes = null;
+    } else {
+      const duration = Math.round(toNumber(payload.estimatedDurationMinutes));
+      if (duration <= 0) {
+        throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+          fields: ['estimatedDurationMinutes'],
+        });
+      }
+      updates.estimatedDurationMinutes = duration;
+    }
+  }
+
+  if (payload.basePrice !== undefined) {
+    const price = toNumber(payload.basePrice);
+    if (price < 0) {
+      throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+        fields: ['basePrice'],
+      });
+    }
+    updates.basePrice = price;
+  }
+
+  if (payload.providerId !== undefined) {
+    if (!payload.providerId) {
+      updates.providerId = null;
+    } else {
+      const provider = await User.findByPk(payload.providerId);
+      if (!provider || provider.role !== USER_ROLES.PROVIDER || !provider.active) {
+        throw new AppError(t('INVALID_PROVIDER', locale), 400, 'INVALID_PROVIDER');
+      }
+      updates.providerId = provider.id;
+    }
+  }
+
+  try {
+    await order.update(updates);
+
+    if (updates.basePrice !== undefined) {
+      await recalculateOrderTotals(order.id);
+    }
+
+    const updated = await getOrderOrFail(order.id, locale);
+
+    if (payload.providerId && updates.providerId) {
+      const provider = await User.findByPk(updates.providerId);
+      notificationProvider.notifyOrderAssigned(updated, provider);
+    }
+
+    return updated;
+  } catch (error) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      throw new AppError(t('SERVICE_ORDER_ALREADY_EXISTS', locale), 409, 'SERVICE_ORDER_ALREADY_EXISTS');
+    }
+    throw error;
+  }
 }
 
 async function checkOut(orderId, { lat, long, afterPhotos }, actor, locale) {
@@ -394,13 +682,182 @@ async function checkOut(orderId, { lat, long, afterPhotos }, actor, locale) {
   return updatedOrder;
 }
 
+function assertValidPaymentStatus(value, locale) {
+  if (!Object.values(PAYMENT_STATUSES).includes(value)) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['paymentStatus'],
+    });
+  }
+}
+
+async function updatePaymentStatuses(orderId, payload, locale) {
+  const order = await getOrderOrFail(orderId, locale);
+  const updates = {};
+  let shouldGenerateReceipt = false;
+
+  if (payload.clientPaymentStatus !== undefined) {
+    assertValidPaymentStatus(payload.clientPaymentStatus, locale);
+    updates.clientPaymentStatus = payload.clientPaymentStatus;
+    updates.clientPaidAt =
+      payload.clientPaymentStatus === PAYMENT_STATUSES.PAID ? new Date() : null;
+  }
+
+  if (payload.providerPaymentStatus !== undefined) {
+    assertValidPaymentStatus(payload.providerPaymentStatus, locale);
+    const wasPending = order.providerPaymentStatus !== PAYMENT_STATUSES.PAID;
+    updates.providerPaymentStatus = payload.providerPaymentStatus;
+    updates.providerPaidAt =
+      payload.providerPaymentStatus === PAYMENT_STATUSES.PAID ? new Date() : null;
+    shouldGenerateReceipt =
+      wasPending && payload.providerPaymentStatus === PAYMENT_STATUSES.PAID;
+  }
+
+  if (!Object.keys(updates).length) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['clientPaymentStatus', 'providerPaymentStatus'],
+    });
+  }
+
+  await order.update(updates);
+  let updatedOrder = await getOrderOrFail(order.id, locale);
+
+  if (shouldGenerateReceipt) {
+    updatedOrder = await issueProviderReceipt(updatedOrder, locale);
+  }
+
+  return updatedOrder;
+}
+
+async function issueProviderReceipt(order, locale) {
+  if (!order.providerId) {
+    throw new AppError(t('REVIEW_NO_PROVIDER', locale), 400, 'REVIEW_NO_PROVIDER');
+  }
+
+  const pdf = await generateReceiptPdf(order);
+  await order.update({
+    receiptUrl: pdf.url,
+    receiptGeneratedAt: new Date(),
+  });
+
+  const updatedOrder = await getOrderOrFail(order.id, locale);
+  notificationProvider.notifyProviderReceipt(updatedOrder);
+
+  return updatedOrder;
+}
+
+async function generateInvoice(orderId, locale) {
+  const order = await getOrderOrFail(orderId, locale);
+  const invoiceNumber = buildInvoiceNumber(order);
+  const pdf = await generateInvoicePdf(order);
+
+  await order.update({
+    invoiceNumber,
+    invoiceUrl: pdf.url,
+    invoiceGeneratedAt: new Date(),
+  });
+
+  const updatedOrder = await getOrderOrFail(order.id, locale);
+
+  if (order.property?.clientId) {
+    notificationProvider.notifyClientInvoice(updatedOrder);
+  }
+
+  return {
+    order: updatedOrder,
+    invoiceUrl: pdf.url,
+    invoiceNumber,
+  };
+}
+
+async function getFinancialSummary(locale) {
+  const orders = await ServiceOrder.findAll({
+    attributes: [
+      'clientPaymentStatus',
+      'providerPaymentStatus',
+      'totalPrice',
+      'commissionAmount',
+      'providerPayoutAmount',
+    ],
+  });
+
+  const summary = {
+    currency: 'USD',
+    commissionRate: EB_COMMISSION_RATE,
+    clientPendingTotal: 0,
+    clientPaidTotal: 0,
+    providerPendingTotal: 0,
+    providerPaidTotal: 0,
+    commissionPendingTotal: 0,
+    commissionEarnedTotal: 0,
+    ordersCount: orders.length,
+  };
+
+  for (const order of orders) {
+    const total = toNumber(order.totalPrice);
+    const commission = toNumber(order.commissionAmount);
+    const payout = toNumber(order.providerPayoutAmount);
+
+    if (order.clientPaymentStatus === PAYMENT_STATUSES.PAID) {
+      summary.clientPaidTotal += total;
+      summary.commissionEarnedTotal += commission;
+    } else {
+      summary.clientPendingTotal += total;
+      summary.commissionPendingTotal += commission;
+    }
+
+    if (order.providerPaymentStatus === PAYMENT_STATUSES.PAID) {
+      summary.providerPaidTotal += payout;
+    } else {
+      summary.providerPendingTotal += payout;
+    }
+  }
+
+  summary.clientPendingTotal = Math.round(summary.clientPendingTotal * 100) / 100;
+  summary.clientPaidTotal = Math.round(summary.clientPaidTotal * 100) / 100;
+  summary.providerPendingTotal = Math.round(summary.providerPendingTotal * 100) / 100;
+  summary.providerPaidTotal = Math.round(summary.providerPaidTotal * 100) / 100;
+  summary.commissionPendingTotal = Math.round(summary.commissionPendingTotal * 100) / 100;
+  summary.commissionEarnedTotal = Math.round(summary.commissionEarnedTotal * 100) / 100;
+
+  return summary;
+}
+
+async function sendCleaningReminder(orderId, locale) {
+  const order = await getOrderOrFail(orderId, locale);
+  const client = order.property?.client;
+
+  if (!client?.id) {
+    throw new AppError(t('PROPERTY_INVALID_CLIENT', locale), 400, 'PROPERTY_INVALID_CLIENT');
+  }
+
+  if (order.status !== SERVICE_ORDER_STATUSES.PENDING) {
+    throw new AppError(t('SERVICE_ORDER_INVALID_STATUS', locale), 400, 'SERVICE_ORDER_INVALID_STATUS');
+  }
+
+  notificationProvider.notifyCleaningReminder(order, client);
+
+  return {
+    sent: true,
+    clientId: client.id,
+    serviceOrderId: order.id,
+    scheduledDate: order.scheduledDate,
+  };
+}
+
 module.exports = {
   listServiceOrders,
   getServiceOrder,
+  createServiceOrder,
+  updateServiceOrder,
   assignProvider,
   checkIn,
   addExtra,
+  requestExtra,
   checkOut,
+  updatePaymentStatuses,
+  generateInvoice,
+  getFinancialSummary,
+  sendCleaningReminder,
   checkProximity,
   haversineDistanceMeters,
 };

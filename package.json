@@ -10,7 +10,8 @@
     "migrate:undo": "npx sequelize-cli db:migrate:undo",
     "seed": "npx sequelize-cli db:seed:all",
     "smoke:test": "node scripts/smoke-test.js",
-    "demo:location": "node scripts/set-demo-location.js"
+    "demo:location": "node scripts/set-demo-location.js",
+    "demo:orders": "node scripts/ensure-demo-orders.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -34,6 +35,7 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "node-ical": "^0.26.1",
+    "pdfkit": "^0.18.0",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.5",

@@ -10,6 +10,11 @@ const NOTIFICATION_EVENTS = {
   INVENTORY_CRITICAL: 'INVENTORY_CRITICAL',
   ORDER_COMPLETED: 'ORDER_COMPLETED',
   ORDER_ASSIGNED: 'ORDER_ASSIGNED',
+  CLIENT_INVOICE: 'CLIENT_INVOICE',
+  PROVIDER_RECEIPT: 'PROVIDER_RECEIPT',
+  INBOX_MESSAGE: 'INBOX_MESSAGE',
+  CLEANING_REMINDER: 'CLEANING_REMINDER',
+  FIELD_REPORT: 'FIELD_REPORT',
 };
 
 let io = null;
@@ -141,6 +146,99 @@ function notifyOrderCompleted(order, property) {
   });
 }
 
+function notifyClientInvoice(order) {
+  const clientId = order.property?.clientId;
+  if (!clientId) return;
+
+  emitToUser(clientId, 'notification', {
+    type: NOTIFICATION_EVENTS.CLIENT_INVOICE,
+    title: 'New invoice available',
+    message: `Invoice ${order.invoiceNumber || ''} for ${order.property?.name || 'your property'} is ready.`,
+    data: {
+      serviceOrderId: order.id,
+      propertyId: order.propertyId,
+      invoiceNumber: order.invoiceNumber,
+      invoiceUrl: order.invoiceUrl,
+      totalPrice: order.totalPrice,
+    },
+  });
+}
+
+function notifyProviderReceipt(order) {
+  if (!order.providerId) return;
+
+  emitToUser(order.providerId, 'notification', {
+    type: NOTIFICATION_EVENTS.PROVIDER_RECEIPT,
+    title: 'Payment receipt',
+    message: `You received ${order.providerPayoutAmount} USD for ${order.property?.name || 'a cleaning'}.`,
+    data: {
+      serviceOrderId: order.id,
+      propertyId: order.propertyId,
+      receiptUrl: order.receiptUrl,
+      providerPayoutAmount: order.providerPayoutAmount,
+      providerPaymentStatus: order.providerPaymentStatus,
+    },
+  });
+}
+
+function notifyInboxMessage(message, sender, recipient) {
+  emitToUser(recipient.id, 'notification', {
+    type: NOTIFICATION_EVENTS.INBOX_MESSAGE,
+    title: message.subject,
+    message: `${sender?.name || 'User'}: ${message.body.slice(0, 120)}`,
+    data: {
+      messageId: message.id,
+      senderId: sender.id,
+      recipientId: recipient.id,
+      serviceOrderId: message.serviceOrderId,
+      propertyId: message.propertyId,
+    },
+  });
+}
+
+function notifyCleaningReminder(order, client) {
+  if (!client?.id) return;
+
+  emitToUser(client.id, 'notification', {
+    type: NOTIFICATION_EVENTS.CLEANING_REMINDER,
+    title: 'Cleaning reminder',
+    message: `Your cleaning at ${order.property?.name || 'your property'} is scheduled for tomorrow. Would you like to add any extras?`,
+    data: {
+      serviceOrderId: order.id,
+      propertyId: order.propertyId,
+      scheduledDate: order.scheduledDate,
+    },
+  });
+}
+
+function notifyFieldReport(report, property) {
+  emitToAdmins('notification', {
+    type: NOTIFICATION_EVENTS.FIELD_REPORT,
+    title: 'Field report submitted',
+    message: `${report.type} reported at ${property?.name || 'property'}: ${report.description.slice(0, 100)}`,
+    data: {
+      fieldReportId: report.id,
+      serviceOrderId: report.serviceOrderId,
+      propertyId: report.propertyId,
+      reportType: report.type,
+    },
+  });
+
+  if (property?.clientId) {
+    emitToUser(property.clientId, 'notification', {
+      type: NOTIFICATION_EVENTS.FIELD_REPORT,
+      title: 'Update from your cleaning',
+      message: `A ${report.type} was reported during cleaning at ${property.name}.`,
+      data: {
+        fieldReportId: report.id,
+        serviceOrderId: report.serviceOrderId,
+        propertyId: report.propertyId,
+        reportType: report.type,
+      },
+    });
+  }
+}
+
 function forceLogoutUser(userId, reason = 'ACCOUNT_DEACTIVATED') {
   const sockets = userSockets.get(userId);
   if (!sockets || !io) return;
@@ -228,6 +326,11 @@ module.exports = {
   notifyOrderAssigned,
   notifyInventoryCritical,
   notifyOrderCompleted,
+  notifyClientInvoice,
+  notifyProviderReceipt,
+  notifyInboxMessage,
+  notifyCleaningReminder,
+  notifyFieldReport,
   forceLogoutUser,
   NOTIFICATION_EVENTS,
 };

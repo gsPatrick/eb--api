@@ -45,15 +45,49 @@ router.get(
 );
 
 router.get(
+  '/financial/summary',
+  authorize(USER_ROLES.ADMIN),
+  serviceOrderController.financialSummary
+);
+
+router.get(
   '/:id',
   authorize(USER_ROLES.ADMIN, USER_ROLES.CLIENT, USER_ROLES.PROVIDER),
   serviceOrderController.getById
+);
+
+router.post('/', authorize(USER_ROLES.ADMIN), serviceOrderController.create);
+
+router.patch('/:id', authorize(USER_ROLES.ADMIN), serviceOrderController.update);
+
+router.patch(
+  '/:id/payments',
+  authorize(USER_ROLES.ADMIN),
+  serviceOrderController.updatePayments
+);
+
+router.post(
+  '/:id/invoice',
+  authorize(USER_ROLES.ADMIN),
+  serviceOrderController.createInvoice
+);
+
+router.post(
+  '/:id/reminder',
+  authorize(USER_ROLES.ADMIN),
+  serviceOrderController.sendReminder
 );
 
 router.patch(
   '/:id/assign',
   authorize(USER_ROLES.ADMIN),
   serviceOrderController.assign
+);
+
+router.post(
+  '/:id/request-extras',
+  authorize(USER_ROLES.CLIENT),
+  serviceOrderController.requestExtra
 );
 
 router.post(

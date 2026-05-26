@@ -15,6 +15,7 @@ const { errorHandler, notFoundHandler } = require('./src/middlewares/error.middl
 const { localeMiddleware } = require('./src/middlewares/locale.middleware');
 const { sequelize } = require('./src/models');
 const { startScheduledSync } = require('./src/features/property/property-sync.service');
+const { startScheduledRecurring } = require('./src/features/recurring-schedule/recurring-schedule-sync.service');
 const { ensureUploadDir, ensureAvatarDir } = require('./src/utils/storage');
 const notificationProvider = require('./src/providers/notification/notification.provider');
 const { ensureDefaultAdmin } = require('./src/bootstrap/ensure-default-admin');
@@ -81,10 +82,11 @@ async function start() {
     await ensureDefaultAdmin();
     await ensureTestProvider();
     await ensureTestClient();
-    await ensureTestDemoData(); // sync demo OS + Casa Demo Patrick Local (-12.932488, -38.364683)
+    await ensureTestDemoData(); // sync demo OS + Patrick Local + Demo Aplicativo
 
     notificationProvider.init(server);
     startScheduledSync();
+    startScheduledRecurring();
 
     server.listen(config.port, () => {
       console.log(`[server] EB API running on port ${config.port}`);

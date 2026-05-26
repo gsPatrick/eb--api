@@ -112,6 +112,16 @@ async function ensureDemoOrder(propertyId, providerId) {
     await order.update({
       providerId,
       status: SERVICE_ORDER_STATUSES.PENDING,
+      startedAt: null,
+      finishedAt: null,
+      checkinLat: null,
+      checkinLong: null,
+      checkoutLat: null,
+      checkoutLong: null,
+      beforePhotos: [],
+      afterPhotos: [],
+      extrasTotalPrice: 0,
+      totalPrice: order.basePrice || 180,
     });
     return order;
   }
@@ -120,12 +130,16 @@ async function ensureDemoOrder(propertyId, providerId) {
     propertyId,
     providerId,
     scheduledDate: today,
+    cleaningType: 'regular_airbnb',
+    estimatedDurationMinutes: 120,
     status: SERVICE_ORDER_STATUSES.PENDING,
     beforePhotos: [],
     afterPhotos: [],
     basePrice: 180,
     extrasTotalPrice: 0,
     totalPrice: 180,
+    commissionAmount: 59.4,
+    providerPayoutAmount: 120.6,
   });
 }
 
@@ -158,7 +172,7 @@ async function ensureTestDemoData() {
     return;
   }
 
-  const { primaryProperty, localProperty } = config.testDemoBootstrap;
+  const { primaryProperty, localProperty, appProperty } = config.testDemoBootstrap;
 
   const primary = await ensurePropertyBundle(client.id, provider.id, primaryProperty, {
     syncCoordinates: false,
@@ -169,25 +183,35 @@ async function ensureTestDemoData() {
   console.log(`[bootstrap] Property: ${primary.property.name}`);
   console.log(`[bootstrap] Order today: ${primary.order.id} → ${provider.email}`);
 
-  if (!localProperty.enabled) {
-    return;
-  }
-
-  const local = await ensurePropertyBundle(
-    client.id,
-    provider.id,
+  const extraDemos = [
     {
-      ...localProperty,
+      spec: localProperty,
       description: 'Segunda propriedade demo para testes de geofence na sua localização.',
     },
-    { syncCoordinates: true }
-  );
+    {
+      spec: appProperty,
+      description: 'Terceira propriedade demo para testes no app mobile (GPS do simulador/celular).',
+    },
+  ];
 
-  console.log(`[bootstrap] Local demo property: ${local.property.name}`);
-  console.log(
-    `[bootstrap] Local coords: ${local.property.latitude}, ${local.property.longitude}`
-  );
-  console.log(`[bootstrap] Local order today: ${local.order.id} → ${provider.email}`);
+  for (const { spec, description } of extraDemos) {
+    if (!spec?.enabled) {
+      continue;
+    }
+
+    const bundle = await ensurePropertyBundle(
+      client.id,
+      provider.id,
+      { ...spec, description },
+      { syncCoordinates: true }
+    );
+
+    console.log(`[bootstrap] Demo property: ${bundle.property.name}`);
+    console.log(
+      `[bootstrap] Coords: ${bundle.property.latitude}, ${bundle.property.longitude}`
+    );
+    console.log(`[bootstrap] Order today: ${bundle.order.id} → ${provider.email}`);
+  }
 }
 
 module.exports = {

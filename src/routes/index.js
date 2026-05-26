@@ -10,6 +10,9 @@ const contractRoutes = require('../features/contract/contract.routes');
 const reportRoutes = require('../features/report/report.routes');
 const reviewRoutes = require('../features/review/review.routes');
 const geocodingRoutes = require('../features/geocoding/geocoding.routes');
+const messageRoutes = require('../features/message/message.routes');
+const fieldReportRoutes = require('../features/field-report/field-report.routes');
+const recurringScheduleRoutes = require('../features/recurring-schedule/recurring-schedule.routes');
 
 const router = Router();
 
@@ -24,5 +27,8 @@ router.use('/v1/contracts', contractRoutes);
 router.use('/v1/reports', reportRoutes);
 router.use('/v1/reviews', reviewRoutes);
 router.use('/v1/geocoding', geocodingRoutes);
+router.use('/v1/messages', messageRoutes);
+router.use('/v1/field-reports', fieldReportRoutes);
+router.use('/v1/recurring-schedules', recurringScheduleRoutes);
 
 module.exports = router;

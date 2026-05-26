@@ -1,48 +1,54 @@
 'use strict';
 
 const { Model } = require('sequelize');
-const { SERVICE_ORDER_EXTRA_SOURCES } = require('../config/constants');
 
 module.exports = (sequelize, DataTypes) => {
-  class ServiceOrderExtra extends Model {}
+  class InboxMessage extends Model {}
 
-  ServiceOrderExtra.init(
+  InboxMessage.init(
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
+      senderId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      recipientId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      subject: {
+        type: DataTypes.STRING(200),
+        allowNull: false,
+      },
+      body: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
       serviceOrderId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
       },
-      serviceExtraId: {
+      propertyId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
       },
-      priceAtTime: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      source: {
-        type: DataTypes.ENUM(...Object.values(SERVICE_ORDER_EXTRA_SOURCES)),
-        allowNull: false,
-        defaultValue: SERVICE_ORDER_EXTRA_SOURCES.PROVIDER_FIELD,
-      },
-      requestedAt: {
+      readAt: {
         type: DataTypes.DATE,
         allowNull: true,
       },
     },
     {
       sequelize,
-      modelName: 'ServiceOrderExtra',
-      tableName: 'service_order_extras',
+      modelName: 'InboxMessage',
+      tableName: 'inbox_messages',
       underscored: true,
       timestamps: true,
     }
   );
 
-  return ServiceOrderExtra;
+  return InboxMessage;
 };

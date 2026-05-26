@@ -4,7 +4,7 @@ const config = require('../../config');
 const AppError = require('../../utils/app-error');
 const { t } = require('../../utils/i18n');
 const { USER_ROLES, SUPPORTED_LOCALES } = require('../../config/constants');
-const { fn, col } = require('sequelize');
+const { fn, col, Op } = require('sequelize');
 const { User, Review } = require('../../models');
 const notificationProvider = require('../../providers/notification/notification.provider');
 
@@ -131,10 +131,18 @@ async function getUserById(id, locale) {
   return sanitizeUser(user);
 }
 
-async function listUsers({ role, active, page = 1, limit = 20 }) {
+async function listUsers({ role, active, search, page = 1, limit = 20 }) {
   const where = {};
   if (role) where.role = role;
   if (active !== undefined) where.active = active === true || active === 'true';
+
+  if (search && String(search).trim()) {
+    const term = `%${String(search).trim()}%`;
+    where[Op.or] = [
+      { name: { [Op.iLike]: term } },
+      { email: { [Op.iLike]: term } },
+    ];
+  }
 
   const offset = (page - 1) * limit;
 

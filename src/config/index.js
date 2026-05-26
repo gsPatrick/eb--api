@@ -85,6 +85,10 @@ const config = {
     cron: process.env.ICAL_SYNC_CRON || '0 * * * *',
     fetchTimeoutMs: Number(process.env.ICAL_FETCH_TIMEOUT_MS) || 15000,
   },
+  recurringSchedule: {
+    enabled: process.env.RECURRING_SCHEDULE_ENABLED !== 'false',
+    cron: process.env.RECURRING_SCHEDULE_CRON || '0 6 * * *',
+  },
   mail: {
     enabled: process.env.MAIL_ENABLED !== 'false',
     driver: process.env.MAIL_DRIVER || 'console',
@@ -96,26 +100,37 @@ const config = {
   geofence: {
     maxDistanceMeters: Number(process.env.GEOFENCE_MAX_DISTANCE_METERS) || 200,
   },
+  company: {
+    name: process.env.COMPANY_NAME || 'EB Services and Solutions',
+    email: process.env.COMPANY_EMAIL || 'contato@ebservices.com',
+    phone: process.env.COMPANY_PHONE || '',
+    zelle: process.env.COMPANY_ZELLE || 'Pending — bank account opening in progress',
+    address: process.env.COMPANY_ADDRESS || 'United States',
+  },
+  financial: {
+    currency: process.env.FINANCIAL_CURRENCY || 'USD',
+    commissionRate: Number(process.env.EB_COMMISSION_RATE || 0.33),
+  },
   adminBootstrap: {
     enabled: process.env.ADMIN_BOOTSTRAP !== 'false' && env !== 'test',
     name: process.env.ADMIN_NAME || 'EB Admin',
     email: process.env.ADMIN_EMAIL || 'admin@ebservices.local',
     password: process.env.ADMIN_PASSWORD || 'Admin@EB2026',
-    locale: process.env.ADMIN_LOCALE || 'pt',
+    locale: process.env.ADMIN_LOCALE || 'en',
   },
   testProviderBootstrap: {
     enabled: process.env.TEST_PROVIDER_BOOTSTRAP !== 'false' && env !== 'test',
     name: process.env.TEST_PROVIDER_NAME || 'Patrick Prestador',
     email: process.env.TEST_PROVIDER_EMAIL || 'patrickprestador@gmail.com',
     password: process.env.TEST_PROVIDER_PASSWORD || 'patrickprestador',
-    locale: process.env.TEST_PROVIDER_LOCALE || 'pt',
+    locale: process.env.TEST_PROVIDER_LOCALE || 'en',
   },
   testClientBootstrap: {
     enabled: process.env.TEST_CLIENT_BOOTSTRAP !== 'false' && env !== 'test',
     name: process.env.TEST_CLIENT_NAME || 'Patrick Cliente',
     email: process.env.TEST_CLIENT_EMAIL || 'patrickcliente@gmail.com',
     password: process.env.TEST_CLIENT_PASSWORD || 'patrickcliente',
-    locale: process.env.TEST_CLIENT_LOCALE || 'pt',
+    locale: process.env.TEST_CLIENT_LOCALE || 'en',
   },
   testDemoBootstrap: {
     enabled: process.env.TEST_DEMO_BOOTSTRAP !== 'false' && env !== 'test',
@@ -131,6 +146,13 @@ const config = {
       address: 'Itapuã — Salvador, BA',
       latitude: -12.932488,
       longitude: -38.364683,
+    },
+    appProperty: {
+      enabled: process.env.DEMO_APP_PROPERTY_ENABLED !== 'false',
+      name: 'Casa Demo EB — Demo Aplicativo',
+      address: 'San Francisco, CA — GPS simulador / celular',
+      latitude: 37.785834,
+      longitude: -122.406417,
     },
   },
 };

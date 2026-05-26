@@ -69,9 +69,9 @@ const getById = catchAsync(async (req, res) => {
 const list = catchAsync(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  const { role, active } = req.query;
+  const { role, active, search } = req.query;
 
-  const result = await userService.listUsers({ role, active, page, limit });
+  const result = await userService.listUsers({ role, active, search, page, limit });
   sendSuccess(res, { data: result.items, meta: result.meta });
 });
 

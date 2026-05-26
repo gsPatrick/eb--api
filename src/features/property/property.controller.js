@@ -29,12 +29,13 @@ const getById = catchAsync(async (req, res) => {
 const list = catchAsync(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  const { status, clientId } = req.query;
+  const { status, clientId, search } = req.query;
 
   const result = await propertyService.listProperties({
     actor: req.user,
     status,
     clientId,
+    search,
     page,
     limit,
   });
