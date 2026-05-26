@@ -16,7 +16,8 @@ const { localeMiddleware } = require('./src/middlewares/locale.middleware');
 const { sequelize } = require('./src/models');
 const { startScheduledSync } = require('./src/features/property/property-sync.service');
 const { startScheduledRecurring } = require('./src/features/recurring-schedule/recurring-schedule-sync.service');
-const { ensureUploadDir, ensureAvatarDir } = require('./src/utils/storage');
+const { ensureUploadDir, ensureAvatarDir, ensureMessagesDir } = require('./src/utils/storage');
+const { createUploadsStaticMiddleware } = require('./src/middlewares/uploads-static.middleware');
 const notificationProvider = require('./src/providers/notification/notification.provider');
 const { ensureDefaultAdmin } = require('./src/bootstrap/ensure-default-admin');
 const { ensureTestProvider } = require('./src/bootstrap/ensure-test-provider');
@@ -26,6 +27,7 @@ const { runMigrations } = require('./src/bootstrap/run-migrations');
 
 ensureUploadDir();
 ensureAvatarDir();
+ensureMessagesDir();
 
 const app = express();
 const server = http.createServer(app);
@@ -41,7 +43,7 @@ app.use(createCorsMiddleware());
 app.use(requestLogger);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/uploads', createUploadsStaticMiddleware());
 app.use(localeMiddleware);
 
 if (config.rateLimit.enabled) {

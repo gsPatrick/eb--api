@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN mkdir -p public/uploads/avatars
+RUN mkdir -p public/uploads/avatars public/uploads/os public/uploads/messages public/uploads/financial
 
 EXPOSE 3000
 
