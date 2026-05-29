@@ -1,0 +1,53 @@
+{
+  "invoice": {
+    "static": ["companyName", "companyEmail", "companyPhone", "companyAddress", "logoUrl", "paymentMethods", "footerNote"],
+    "dynamic": {
+      "invoiceNumber": "string",
+      "dateIssued": "date",
+      "dueDate": "date",
+      "clientName": "string",
+      "serviceAddress": "string",
+      "clientContact": "string",
+      "lineItems": [
+        {
+          "description": "string",
+          "quantity": "number|string",
+          "rate": "number",
+          "total": "number"
+        }
+      ],
+      "subtotal": "number",
+      "discount": "number",
+      "totalDue": "number"
+    }
+  },
+  "receipt": {
+    "static": ["companyName", "companyEmail", "companyPhone", "companyAddress", "logoUrl", "footerNote"],
+    "dynamic": {
+      "receiptNumber": "string",
+      "datePaid": "date",
+      "serviceDate": "date",
+      "providerName": "string",
+      "providerEmail": "string",
+      "propertyName": "string",
+      "propertyAddress": "string",
+      "clientTotal": "number",
+      "commissionAmount": "number",
+      "commissionRatePercent": "number",
+      "providerPayout": "number"
+    }
+  },
+  "contract": {
+    "static": ["companyName", "companyEmail", "companyPhone", "companyAddress", "logoUrl", "footerNote"],
+    "dynamic": {
+      "contractTitle": "string",
+      "contractVersion": "number",
+      "contractTypeLabel": "string",
+      "contractContent": "string",
+      "signerName": "string",
+      "signerEmail": "string",
+      "acceptedAt": "date|null",
+      "signerIp": "string|null"
+    }
+  }
+}

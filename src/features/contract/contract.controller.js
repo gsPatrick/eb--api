@@ -70,6 +70,13 @@ const listAcceptances = catchAsync(async (req, res) => {
   sendSuccess(res, { data: result.items, meta: result.meta });
 });
 
+const downloadPdf = catchAsync(async (req, res) => {
+  const pdf = await contractService.downloadContractPdf(req.params.id, req.user, req.locale);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${pdf.filename}"`);
+  res.sendFile(pdf.path);
+});
+
 module.exports = {
   list,
   getById,
@@ -79,4 +86,5 @@ module.exports = {
   accept,
   myAcceptances,
   listAcceptances,
+  downloadPdf,
 };

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Receipt {{receiptNumber}}</title>
+  <style>{{{styles}}}</style>
+</head>
+<body>
+  <div class="page">
+    {{> header}}
+
+    <section class="section">
+      <div class="summary-grid">
+        <div>
+          <p class="section-label">Paid To</p>
+          <div class="info-card">
+            <p><strong>{{providerName}}</strong></p>
+            {{#if providerEmail}}<p>{{providerEmail}}</p>{{/if}}
+          </div>
+        </div>
+        <div>
+          <p class="section-label">Service Property</p>
+          <div class="info-card">
+            <p><strong>{{propertyName}}</strong></p>
+            <p>{{propertyAddress}}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-label">Payment Summary</p>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Client service total</td>
+            <td class="amount">{{clientTotalFormatted}}</td>
+          </tr>
+          <tr>
+            <td>EB commission ({{commissionRatePercent}}%)</td>
+            <td class="amount">{{commissionFormatted}}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="payout-highlight">
+        <div class="label">Provider Payout</div>
+        <div class="value">{{providerPayoutFormatted}}</div>
+      </div>
+    </section>
+
+    {{> footer}}
+  </div>
+</body>
+</html>

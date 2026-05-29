@@ -109,6 +109,8 @@ const config = {
     email: process.env.COMPANY_EMAIL || 'contato@ebservices.com',
     phone: process.env.COMPANY_PHONE || '',
     zelle: process.env.COMPANY_ZELLE || 'Pending — bank account opening in progress',
+    venmo: process.env.COMPANY_VENMO || '',
+    logoUrl: process.env.COMPANY_LOGO_URL || '',
     address: process.env.COMPANY_ADDRESS || 'United States',
   },
   financial: {

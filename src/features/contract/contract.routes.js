@@ -14,6 +14,7 @@ router.get(
   contractController.listAcceptances
 );
 router.get('/', contractController.list);
+router.get('/:id/pdf', contractController.downloadPdf);
 router.get('/:id', contractController.getById);
 
 router.post('/', authorize(USER_ROLES.ADMIN), contractController.create);

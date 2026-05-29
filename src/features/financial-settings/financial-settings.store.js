@@ -13,6 +13,9 @@ function defaultSettings() {
     companyPhone: company.phone || '',
     companyAddress: company.address || '',
     zelle: company.zelle || '',
+    venmo: company.venmo || '',
+    logoUrl: company.logoUrl || '',
+    invoiceDueDays: 14,
     invoiceFooter:
       'Payment methods: Zelle or check. Thank you for choosing EB Services and Solutions.',
     receiptFooter: 'Payment recorded manually by EB Services admin.',

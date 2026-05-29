@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{contractTitle}}</title>
+  <style>{{{styles}}}</style>
+</head>
+<body>
+  <div class="page">
+    {{> header}}
+
+    <section class="section">
+      <p class="section-label">{{contractTitle}}</p>
+      <div class="info-card">
+        <p><strong>Party:</strong> {{signerName}}</p>
+        {{#if signerEmail}}<p><strong>Email:</strong> {{signerEmail}}</p>{{/if}}
+        <p><strong>Version:</strong> {{contractVersion}}</p>
+        <p><strong>Type:</strong> {{contractTypeLabel}}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-label">Terms &amp; Conditions</p>
+      <div class="contract-body">{{contractContent}}</div>
+    </section>
+
+    {{#if acceptedAt}}
+      <div class="signature-block">
+        <p class="section-label">Digital Acceptance</p>
+        <p><strong>Signed by:</strong> {{signerName}}</p>
+        <p><strong>Accepted on:</strong> {{acceptedAt}}</p>
+        {{#if signerIp}}<p><strong>IP address:</strong> {{signerIp}}</p>{{/if}}
+      </div>
+    {{/if}}
+
+    {{> footer}}
+  </div>
+</body>
+</html>

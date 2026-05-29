@@ -8,6 +8,9 @@ const ALLOWED_FIELDS = [
   'companyPhone',
   'companyAddress',
   'zelle',
+  'venmo',
+  'logoUrl',
+  'invoiceDueDays',
   'invoiceFooter',
   'receiptFooter',
   'documentDisclaimer',
@@ -36,6 +39,9 @@ async function updateFinancialSettings(payload, locale) {
     throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
       fields: ['companyName'],
     });
+  }
+  if (updates.invoiceDueDays !== undefined) {
+    updates.invoiceDueDays = Number(updates.invoiceDueDays) || 14;
   }
   return writeSettings(updates);
 }

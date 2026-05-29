@@ -3,6 +3,7 @@ const { t } = require('../../utils/i18n');
 const { USER_ROLES, CONTRACT_TYPES } = require('../../config/constants');
 const { Contract, ContractAcceptance, User } = require('../../models');
 const mailProvider = require('../../providers/mail/mail.provider');
+const { generateContractPdf } = require('../../utils/pdf-documents');
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
@@ -160,6 +161,28 @@ async function listUserAcceptances(userId) {
   });
 }
 
+async function downloadContractPdf(contractId, user, locale) {
+  const contract = await getContractById(contractId, locale);
+
+  if (user.role === USER_ROLES.ADMIN) {
+    return generateContractPdf(contract, {}, null);
+  }
+
+  if (contract.type === CONTRACT_TYPES.CLIENT_EB && user.role !== USER_ROLES.CLIENT) {
+    throw new AppError(t('CONTRACT_WRONG_ROLE', locale), 403, 'FORBIDDEN');
+  }
+
+  if (contract.type === CONTRACT_TYPES.PROVIDER_EB && user.role !== USER_ROLES.PROVIDER) {
+    throw new AppError(t('CONTRACT_WRONG_ROLE', locale), 403, 'FORBIDDEN');
+  }
+
+  const acceptance = await ContractAcceptance.findOne({
+    where: { userId: user.id, contractId: contract.id },
+  });
+
+  return generateContractPdf(contract, user, acceptance);
+}
+
 async function listAllAcceptances({ page = 1, limit = 20, userId, contractId }) {
   const where = {};
   if (userId) where.userId = userId;
@@ -206,4 +229,5 @@ module.exports = {
   acceptContract,
   listUserAcceptances,
   listAllAcceptances,
+  downloadContractPdf,
 };

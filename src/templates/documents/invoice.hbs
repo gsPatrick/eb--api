@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Invoice {{invoiceNumber}}</title>
+  <style>{{{styles}}}</style>
+</head>
+<body>
+  <div class="page">
+    {{> header}}
+
+    <section class="section">
+      <p class="section-label">Bill To</p>
+      <div class="info-card">
+        <p><strong>{{clientName}}</strong></p>
+        <p>{{serviceAddress}}</p>
+        {{#if clientContact}}<p>{{clientContact}}</p>{{/if}}
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-label">Service Details</p>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Service Description</th>
+            <th>Qty / Hours</th>
+            <th>Rate</th>
+            <th>Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each lineItems}}
+            <tr>
+              <td>{{description}}</td>
+              <td>{{quantity}}</td>
+              <td class="amount">{{rateFormatted}}</td>
+              <td class="amount">{{totalFormatted}}</td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <div class="totals-wrap">
+        <table class="totals-table">
+          <tr>
+            <td>Subtotal</td>
+            <td>{{subtotalFormatted}}</td>
+          </tr>
+          {{#if hasDiscount}}
+            <tr>
+              <td>Discount</td>
+              <td>-{{discountFormatted}}</td>
+            </tr>
+          {{/if}}
+          <tr class="total-row">
+            <td>Total Due</td>
+            <td>{{totalDueFormatted}}</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    {{> footer}}
+  </div>
+</body>
+</html>

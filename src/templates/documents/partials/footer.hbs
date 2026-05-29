@@ -1,0 +1,14 @@
+{{#if paymentMethods}}
+  <div class="payment-box">
+    <h3>Payment Methods</h3>
+    <ul>
+      {{#each paymentMethods}}
+        <li>{{this}}</li>
+      {{/each}}
+    </ul>
+  </div>
+{{/if}}
+
+{{#if footerNote}}
+  <p class="footer-note">{{footerNote}}</p>
+{{/if}}

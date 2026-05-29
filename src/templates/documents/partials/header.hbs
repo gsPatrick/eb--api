@@ -1,0 +1,28 @@
+<header class="doc-header">
+  <div class="brand-block">
+    {{#if logoUrl}}
+      <img class="logo-image" src="{{logoUrl}}" alt="{{companyName}}" />
+    {{else}}
+      <div class="logo-mark">EB</div>
+    {{/if}}
+    <h1 class="company-name">{{companyName}}</h1>
+    <p class="company-meta">
+      {{#if companyEmail}}{{companyEmail}}{{#if companyPhone}} · {{/if}}{{/if}}
+      {{#if companyPhone}}{{companyPhone}}{{/if}}
+      {{#if companyAddress}}<br />{{companyAddress}}{{/if}}
+    </p>
+  </div>
+  <div class="doc-title-block">
+    <h2 class="doc-type">{{documentTitle}}</h2>
+    {{#if metaRows}}
+      <table class="doc-meta-table">
+        {{#each metaRows}}
+          <tr>
+            <td>{{label}}</td>
+            <td>{{value}}</td>
+          </tr>
+        {{/each}}
+      </table>
+    {{/if}}
+  </div>
+</header>
