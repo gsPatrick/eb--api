@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
-const config = require('../config');
 const { formatUsd } = require('./financial');
+const { readSettings } = require('../features/financial-settings/financial-settings.store');
 
 const FINANCIAL_SUBDIR = 'financial';
 const FINANCIAL_RELATIVE_PATH = `/uploads/${FINANCIAL_SUBDIR}`;
@@ -48,17 +48,19 @@ function buildInvoiceNumber(order) {
 }
 
 function renderDocumentHeader(doc, title) {
-  const company = config.company;
-  doc.fontSize(20).text(company.name, { continued: false });
+  const settings = readSettings();
+  doc.fontSize(20).text(settings.companyName, { continued: false });
   doc.fontSize(10).fillColor('#555555');
-  doc.text(company.address || '');
-  if (company.email) doc.text(company.email);
-  if (company.phone) doc.text(company.phone);
+  if (settings.companyAddress) doc.text(settings.companyAddress);
+  if (settings.companyEmail) doc.text(settings.companyEmail);
+  if (settings.companyPhone) doc.text(settings.companyPhone);
   doc.moveDown();
   doc.fillColor('#000000').fontSize(16).text(title);
   doc.moveDown(0.5);
-  doc.fontSize(10).fillColor('#666666').text('TEST TEMPLATE — final layout pending client branding');
-  doc.fillColor('#000000').moveDown();
+  if (settings.documentDisclaimer) {
+    doc.fontSize(10).fillColor('#666666').text(settings.documentDisclaimer);
+    doc.fillColor('#000000').moveDown();
+  }
 }
 
 function buildLineItems(order) {
@@ -122,11 +124,9 @@ async function generateInvoicePdf(order) {
   doc.text(`Total due: ${formatUsd(order.totalPrice)}`, { align: 'right' });
   doc.moveDown();
   doc.font('Helvetica');
-  doc.text('Payment methods: Zelle or check');
-  doc.text(`Zelle: ${config.company.zelle}`);
-  doc.moveDown();
-  doc.fontSize(9).fillColor('#666666');
-  doc.text('This is a test invoice template. Final company details and layout will be updated.');
+  const settings = readSettings();
+  doc.text(settings.invoiceFooter || 'Payment methods: Zelle or check');
+  if (settings.zelle) doc.text(`Zelle: ${settings.zelle}`);
 
   return writePdfToFile(doc, filename);
 }
@@ -163,7 +163,7 @@ async function generateReceiptPdf(order) {
   doc.font('Helvetica-Bold').text(`Provider payout: ${formatUsd(order.providerPayoutAmount)}`);
   doc.moveDown();
   doc.font('Helvetica').fontSize(9).fillColor('#666666');
-  doc.text('Test receipt — payment recorded manually by EB Services admin.');
+  doc.text(readSettings().receiptFooter || 'Payment recorded manually by EB Services admin.');
 
   return writePdfToFile(doc, filename);
 }
