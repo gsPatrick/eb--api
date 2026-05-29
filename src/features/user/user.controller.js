@@ -19,6 +19,11 @@ const createAdmin = catchAsync(async (req, res) => {
   sendCreated(res, { data: { user } });
 });
 
+const createClient = catchAsync(async (req, res) => {
+  const result = await userService.createClientUser(req.body, req.locale);
+  sendCreated(res, { data: result });
+});
+
 const login = catchAsync(async (req, res) => {
   const result = await userService.authenticateUser({
     ...req.body,
@@ -106,6 +111,7 @@ const updateRole = catchAsync(async (req, res) => {
 module.exports = {
   register,
   createAdmin,
+  createClient,
   login,
   getMe,
   updateMe,

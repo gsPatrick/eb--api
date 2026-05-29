@@ -136,6 +136,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      receiptNumber: {
+        type: DataTypes.STRING(64),
+        allowNull: true,
+      },
+      cleaningReminderSentAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
     },
     {
       sequelize,

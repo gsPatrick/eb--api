@@ -13,6 +13,7 @@ const geocodingRoutes = require('../features/geocoding/geocoding.routes');
 const messageRoutes = require('../features/message/message.routes');
 const fieldReportRoutes = require('../features/field-report/field-report.routes');
 const recurringScheduleRoutes = require('../features/recurring-schedule/recurring-schedule.routes');
+const notificationRoutes = require('../features/notification/notification.routes');
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/v1/geocoding', geocodingRoutes);
 router.use('/v1/messages', messageRoutes);
 router.use('/v1/field-reports', fieldReportRoutes);
 router.use('/v1/recurring-schedules', recurringScheduleRoutes);
+router.use('/v1/notifications', notificationRoutes);
 
 module.exports = router;

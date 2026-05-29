@@ -81,6 +81,61 @@ async function createAdminUser(payload, locale) {
   return sanitizeUser(user);
 }
 
+async function createClientUser(payload, locale) {
+  const {
+    name,
+    email,
+    password,
+    phone,
+    address,
+    locale: userLocale,
+    propertyName,
+    propertyAddress,
+    latitude,
+    longitude,
+  } = payload;
+
+  if (!name || !email || !password) {
+    throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
+      fields: ['name', 'email', 'password'],
+    });
+  }
+
+  const existing = await User.findOne({ where: { email: email.toLowerCase() } });
+  if (existing) {
+    throw new AppError(t('EMAIL_ALREADY_EXISTS', locale), 409, 'EMAIL_ALREADY_EXISTS');
+  }
+
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+  const user = await User.create({
+    name,
+    email: email.toLowerCase(),
+    passwordHash,
+    role: USER_ROLES.CLIENT,
+    phone: phone || null,
+    address: address || null,
+    locale: userLocale || locale || 'pt',
+    active: true,
+  });
+
+  let property = null;
+  if (propertyName && propertyAddress) {
+    const { Property } = require('../../models');
+    property = await Property.create({
+      name: propertyName,
+      address: propertyAddress,
+      clientId: user.id,
+      status: 'active',
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
+      defaultCleaningPrice: 0,
+    });
+  }
+
+  return { user: sanitizeUser(user), property };
+}
+
 async function authenticateUser({ email, password, locale }) {
   if (!email || !password) {
     throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
@@ -141,6 +196,8 @@ async function listUsers({ role, active, search, page = 1, limit = 20 }) {
     where[Op.or] = [
       { name: { [Op.iLike]: term } },
       { email: { [Op.iLike]: term } },
+      { phone: { [Op.iLike]: term } },
+      { address: { [Op.iLike]: term } },
     ];
   }
 
@@ -299,6 +356,7 @@ async function getProviderAverageRating(providerId, locale) {
 module.exports = {
   registerUser,
   createAdminUser,
+  createClientUser,
   authenticateUser,
   getUserById,
   listUsers,

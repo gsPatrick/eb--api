@@ -65,6 +65,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      address: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+      },
     },
     {
       sequelize,

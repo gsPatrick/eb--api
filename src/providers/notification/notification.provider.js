@@ -4,10 +4,12 @@ const config = require('../../config');
 const { getSocketCorsOptions } = require('../../middlewares/cors.middleware');
 const { User } = require('../../models');
 const { USER_ROLES } = require('../../config/constants');
+const { persistNotification, persistForUsers } = require('./notification.store');
 
 const NOTIFICATION_EVENTS = {
   ORDER_CHECKIN: 'ORDER_CHECKIN',
   INVENTORY_CRITICAL: 'INVENTORY_CRITICAL',
+  INVENTORY_LOW: 'INVENTORY_LOW',
   ORDER_COMPLETED: 'ORDER_COMPLETED',
   ORDER_ASSIGNED: 'ORDER_ASSIGNED',
   CLIENT_INVOICE: 'CLIENT_INVOICE',
@@ -51,6 +53,24 @@ function emitToSocketIds(socketIds, event, payload) {
   }
 }
 
+async function deliverToUser(userId, payload) {
+  if (!userId) return;
+
+  await persistNotification(userId, payload);
+  emitToUser(userId, 'notification', payload);
+}
+
+async function deliverToAdmins(payload) {
+  const admins = await User.findAll({
+    where: { role: USER_ROLES.ADMIN, active: true },
+    attributes: ['id'],
+  });
+  const adminIds = admins.map((admin) => admin.id);
+
+  await persistForUsers(adminIds, payload);
+  emitToAdmins('notification', payload);
+}
+
 function emitToUser(userId, event, payload) {
   const sockets = userSockets.get(userId);
   if (!sockets || sockets.size === 0) return;
@@ -85,7 +105,7 @@ function emitToAdmins(event, payload) {
 function notifyOrderAssigned(order, provider) {
   if (!provider?.id) return;
 
-  emitToUser(provider.id, 'notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.ORDER_ASSIGNED,
     title: 'Nova OS atribuída',
     message: `Limpeza agendada em ${order.property?.name || 'propriedade'}.`,
@@ -95,11 +115,13 @@ function notifyOrderAssigned(order, provider) {
       providerId: provider.id,
       scheduledDate: order.scheduledDate,
     },
-  });
+  };
+
+  deliverToUser(provider.id, payload);
 }
 
 function notifyOrderCheckIn(order, provider) {
-  emitToAdmins('notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.ORDER_CHECKIN,
     title: 'Check-in realizado',
     message: `${provider?.name || 'Prestador'} iniciou limpeza em ${order.property?.name || 'propriedade'}.`,
@@ -108,7 +130,9 @@ function notifyOrderCheckIn(order, provider) {
       propertyId: order.propertyId,
       providerId: order.providerId,
     },
-  });
+  };
+
+  deliverToAdmins(payload);
 }
 
 function notifyInventoryCritical(item, property) {
@@ -124,17 +148,35 @@ function notifyInventoryCritical(item, property) {
     },
   };
 
-  emitToAdmins('notification', payload);
-
+  deliverToAdmins(payload);
   if (property?.clientId) {
-    emitToUser(property.clientId, 'notification', payload);
+    deliverToUser(property.clientId, payload);
+  }
+}
+
+function notifyInventoryLow(item, property) {
+  const payload = {
+    type: NOTIFICATION_EVENTS.INVENTORY_LOW,
+    title: 'Estoque baixo',
+    message: `Item "${item.name}" está abaixo do ideal em ${property?.name || 'propriedade'}.`,
+    data: {
+      inventoryItemId: item.id,
+      propertyId: item.propertyId,
+      currentQuantity: item.currentQuantity,
+      criticalLevel: item.criticalLevel,
+    },
+  };
+
+  deliverToAdmins(payload);
+  if (property?.clientId) {
+    deliverToUser(property.clientId, payload);
   }
 }
 
 function notifyOrderCompleted(order, property) {
   if (!property?.clientId) return;
 
-  emitToUser(property.clientId, 'notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.ORDER_COMPLETED,
     title: 'Limpeza concluída',
     message: `A ordem de serviço em ${property.name} foi finalizada.`,
@@ -143,17 +185,19 @@ function notifyOrderCompleted(order, property) {
       propertyId: order.propertyId,
       finishedAt: order.finishedAt,
     },
-  });
+  };
+
+  deliverToUser(property.clientId, payload);
 }
 
 function notifyClientInvoice(order) {
   const clientId = order.property?.clientId;
   if (!clientId) return;
 
-  emitToUser(clientId, 'notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.CLIENT_INVOICE,
-    title: 'New invoice available',
-    message: `Invoice ${order.invoiceNumber || ''} for ${order.property?.name || 'your property'} is ready.`,
+    title: 'Nova fatura disponível',
+    message: `Fatura ${order.invoiceNumber || ''} para ${order.property?.name || 'sua propriedade'} está pronta.`,
     data: {
       serviceOrderId: order.id,
       propertyId: order.propertyId,
@@ -161,31 +205,36 @@ function notifyClientInvoice(order) {
       invoiceUrl: order.invoiceUrl,
       totalPrice: order.totalPrice,
     },
-  });
+  };
+
+  deliverToUser(clientId, payload);
 }
 
 function notifyProviderReceipt(order) {
   if (!order.providerId) return;
 
-  emitToUser(order.providerId, 'notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.PROVIDER_RECEIPT,
-    title: 'Payment receipt',
-    message: `You received ${order.providerPayoutAmount} USD for ${order.property?.name || 'a cleaning'}.`,
+    title: 'Recibo de pagamento',
+    message: `Você recebeu USD ${order.providerPayoutAmount} por ${order.property?.name || 'uma limpeza'}.`,
     data: {
       serviceOrderId: order.id,
       propertyId: order.propertyId,
+      receiptNumber: order.receiptNumber,
       receiptUrl: order.receiptUrl,
       providerPayoutAmount: order.providerPayoutAmount,
       providerPaymentStatus: order.providerPaymentStatus,
     },
-  });
+  };
+
+  deliverToUser(order.providerId, payload);
 }
 
 function notifyInboxMessage(message, sender, recipient) {
-  emitToUser(recipient.id, 'notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.INBOX_MESSAGE,
     title: message.subject,
-    message: `${sender?.name || 'User'}: ${message.body.slice(0, 120)}`,
+    message: `${sender?.name || 'Usuário'}: ${message.body.slice(0, 120)}`,
     data: {
       messageId: message.id,
       senderId: sender.id,
@@ -193,49 +242,51 @@ function notifyInboxMessage(message, sender, recipient) {
       serviceOrderId: message.serviceOrderId,
       propertyId: message.propertyId,
     },
-  });
+  };
+
+  deliverToUser(recipient.id, payload);
 }
 
 function notifyCleaningReminder(order, client) {
   if (!client?.id) return;
 
-  emitToUser(client.id, 'notification', {
+  const payload = {
     type: NOTIFICATION_EVENTS.CLEANING_REMINDER,
-    title: 'Cleaning reminder',
-    message: `Your cleaning at ${order.property?.name || 'your property'} is scheduled for tomorrow. Would you like to add any extras?`,
+    title: 'Lembrete de limpeza',
+    message: `Sua limpeza em ${order.property?.name || 'sua propriedade'} é amanhã. Deseja incluir serviços extras?`,
     data: {
       serviceOrderId: order.id,
       propertyId: order.propertyId,
       scheduledDate: order.scheduledDate,
     },
-  });
+  };
+
+  deliverToUser(client.id, payload);
 }
 
 function notifyFieldReport(report, property) {
-  emitToAdmins('notification', {
+  const adminPayload = {
     type: NOTIFICATION_EVENTS.FIELD_REPORT,
-    title: 'Field report submitted',
-    message: `${report.type} reported at ${property?.name || 'property'}: ${report.description.slice(0, 100)}`,
+    title: 'Relatório de campo',
+    message: `${report.type} reportado em ${property?.name || 'propriedade'}: ${report.description.slice(0, 100)}`,
     data: {
       fieldReportId: report.id,
       serviceOrderId: report.serviceOrderId,
       propertyId: report.propertyId,
       reportType: report.type,
     },
-  });
+  };
+
+  deliverToAdmins(adminPayload);
 
   if (property?.clientId) {
-    emitToUser(property.clientId, 'notification', {
+    const clientPayload = {
       type: NOTIFICATION_EVENTS.FIELD_REPORT,
-      title: 'Update from your cleaning',
-      message: `A ${report.type} was reported during cleaning at ${property.name}.`,
-      data: {
-        fieldReportId: report.id,
-        serviceOrderId: report.serviceOrderId,
-        propertyId: report.propertyId,
-        reportType: report.type,
-      },
-    });
+      title: 'Atualização da sua limpeza',
+      message: `Um ${report.type} foi reportado durante a limpeza em ${property.name}.`,
+      data: adminPayload.data,
+    };
+    deliverToUser(property.clientId, clientPayload);
   }
 }
 
@@ -325,6 +376,7 @@ module.exports = {
   notifyOrderCheckIn,
   notifyOrderAssigned,
   notifyInventoryCritical,
+  notifyInventoryLow,
   notifyOrderCompleted,
   notifyClientInvoice,
   notifyProviderReceipt,

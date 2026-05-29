@@ -15,6 +15,7 @@ const { localeMiddleware } = require('./src/middlewares/locale.middleware');
 const { sequelize } = require('./src/models');
 const { startScheduledSync } = require('./src/features/property/property-sync.service');
 const { startScheduledRecurring } = require('./src/features/recurring-schedule/recurring-schedule-sync.service');
+const { startScheduledCleaningReminders } = require('./src/features/service-order/cleaning-reminder-sync.service');
 const { ensureUploadDir, ensureAvatarDir, ensureMessagesDir } = require('./src/utils/storage');
 const { createUploadsStaticMiddleware } = require('./src/middlewares/uploads-static.middleware');
 const notificationProvider = require('./src/providers/notification/notification.provider');
@@ -88,6 +89,7 @@ async function start() {
     notificationProvider.init(server);
     startScheduledSync();
     startScheduledRecurring();
+    startScheduledCleaningReminders();
 
     server.listen(config.port, () => {
       console.log(`[server] EB API running on port ${config.port}`);

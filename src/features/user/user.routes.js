@@ -32,6 +32,7 @@ router.patch('/me', authenticate, userController.updateMe);
 router.patch('/me/avatar', authenticate, handleAvatarUpload, userController.updateAvatar);
 
 router.post('/admin', authenticate, authorize(USER_ROLES.ADMIN), userController.createAdmin);
+router.post('/clients', authenticate, authorize(USER_ROLES.ADMIN), userController.createClient);
 
 router.get('/', authenticate, authorize(USER_ROLES.ADMIN), userController.list);
 

@@ -4,7 +4,7 @@ const { t } = require('../../utils/i18n');
 const config = require('../../config');
 const { USER_ROLES, SERVICE_ORDER_STATUSES, CLEANING_TYPES, SERVICE_ORDER_EXTRA_SOURCES, CLIENT_EXTRA_REQUEST_HOURS, PAYMENT_STATUSES, EB_COMMISSION_RATE } = require('../../config/constants');
 const { splitOrderFinancials } = require('../../utils/financial');
-const { generateInvoicePdf, generateReceiptPdf, buildInvoiceNumber } = require('../../utils/pdf-documents');
+const { generateInvoicePdf, generateReceiptPdf, buildInvoiceNumber, buildReceiptNumber } = require('../../utils/pdf-documents');
 const {
   sequelize,
   Sequelize,
@@ -16,37 +16,19 @@ const {
 } = require('../../models');
 const notificationProvider = require('../../providers/notification/notification.provider');
 const messageService = require('../message/message.service');
+const {
+  buildOrderIncludes,
+  sanitizeOrderForActor,
+  sanitizeOrdersForActor,
+} = require('../../utils/order-serializer');
 
-const orderIncludes = [
-  {
-    model: Property,
-    as: 'property',
-    attributes: ['id', 'name', 'address', 'clientId', 'status', 'latitude', 'longitude'],
-    include: [
-      {
-        model: User,
-        as: 'client',
-        attributes: ['id', 'name', 'email', 'phone', 'role'],
-      },
-    ],
-  },
-  {
-    model: User,
-    as: 'provider',
-    attributes: ['id', 'name', 'email', 'phone', 'role'],
-  },
-  {
-    model: ServiceOrderExtra,
-    as: 'extras',
-    include: [
-      {
-        model: ServiceExtra,
-        as: 'serviceExtra',
-        attributes: ['id', 'name', 'defaultPrice', 'estimatedTime'],
-      },
-    ],
-  },
-];
+const orderModels = { Property, User, ServiceOrderExtra, ServiceExtra };
+
+function getOrderIncludes(actor) {
+  return buildOrderIncludes(orderModels, actor);
+}
+
+const orderIncludes = getOrderIncludes(null);
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -177,8 +159,9 @@ function assertWithinPropertyGeofence(property, userCoords, locale) {
 }
 
 async function getOrderOrFail(id, locale, options = {}) {
+  const actor = options.actor || null;
   const order = await ServiceOrder.findByPk(id, {
-    include: orderIncludes,
+    include: actor ? getOrderIncludes(actor) : orderIncludes,
     ...options,
   });
 
@@ -233,7 +216,7 @@ async function recalculateOrderTotals(orderId, transaction) {
 
 async function listServiceOrders({ actor, status, page = 1, limit = 20, locale = 'pt' }) {
   const where = {};
-  const include = [...orderIncludes];
+  const include = [...getOrderIncludes(actor)];
 
   if (actor.role === USER_ROLES.PROVIDER) {
     where.providerId = actor.id;
@@ -270,7 +253,7 @@ async function listServiceOrders({ actor, status, page = 1, limit = 20, locale =
   });
 
   return {
-    items: rows,
+    items: sanitizeOrdersForActor(rows, actor),
     meta: {
       total: count,
       page,
@@ -281,7 +264,7 @@ async function listServiceOrders({ actor, status, page = 1, limit = 20, locale =
 }
 
 async function getServiceOrder(id, actor, locale = 'pt') {
-  const order = await getOrderOrFail(id, locale);
+  const order = await getOrderOrFail(id, locale, { actor });
 
   if (actor.role === USER_ROLES.PROVIDER) {
     assertProviderOwnership(order, actor, locale);
@@ -293,7 +276,7 @@ async function getServiceOrder(id, actor, locale = 'pt') {
     throw new AppError(t('FORBIDDEN', locale), 403, 'FORBIDDEN');
   }
 
-  return order;
+  return sanitizeOrderForActor(order, actor);
 }
 
 async function assignProvider(orderId, providerId, locale) {
@@ -508,18 +491,14 @@ async function createServiceOrder(payload, locale) {
     resolvedProviderId = provider.id;
   }
 
-  const resolvedBasePrice =
-    basePrice !== undefined && basePrice !== null && basePrice !== ''
-      ? toNumber(basePrice)
-      : toNumber(property.defaultCleaningPrice);
-
-  if (resolvedBasePrice < 0) {
+  const resolvedBasePrice = toNumber(basePrice);
+  if (resolvedBasePrice <= 0) {
     throw new AppError(t('VALIDATION_ERROR', locale), 400, 'VALIDATION_ERROR', {
       fields: ['basePrice'],
     });
   }
 
-  let resolvedDuration = null;
+  let resolvedDuration = 120;
   if (estimatedDurationMinutes !== undefined && estimatedDurationMinutes !== null && estimatedDurationMinutes !== '') {
     resolvedDuration = Math.round(toNumber(estimatedDurationMinutes));
     if (resolvedDuration <= 0) {
@@ -734,8 +713,10 @@ async function issueProviderReceipt(order, locale) {
     throw new AppError(t('REVIEW_NO_PROVIDER', locale), 400, 'REVIEW_NO_PROVIDER');
   }
 
-  const pdf = await generateReceiptPdf(order);
+  const receiptNumber = buildReceiptNumber(order);
+  const pdf = await generateReceiptPdf({ ...order.toJSON(), receiptNumber });
   await order.update({
+    receiptNumber,
     receiptUrl: pdf.url,
     receiptGeneratedAt: new Date(),
   });
@@ -744,11 +725,11 @@ async function issueProviderReceipt(order, locale) {
   notificationProvider.notifyProviderReceipt(updatedOrder);
   await messageService.createAutomatedInboxMessage({
     recipientId: order.providerId,
-    subject: `Payment receipt — ${order.property?.name || 'Cleaning'}`,
-    body: `Your payout receipt is available. Amount: USD ${Number(order.providerPayoutAmount || 0).toFixed(2)}.`,
+    subject: `Recibo ${receiptNumber} — ${order.property?.name || 'Limpeza'}`,
+    body: `Seu recibo de pagamento está disponível. Valor: USD ${Number(order.providerPayoutAmount || 0).toFixed(2)}.`,
     messageType: messageService.MESSAGE_TYPES.RECEIPT,
     attachmentUrl: pdf.url,
-    attachmentName: `receipt-${order.id.slice(0, 8)}.pdf`,
+    attachmentName: `${receiptNumber}.pdf`,
     serviceOrderId: order.id,
     propertyId: order.propertyId,
   });
@@ -858,12 +839,14 @@ async function sendCleaningReminder(orderId, locale) {
   notificationProvider.notifyCleaningReminder(order, client);
   await messageService.createAutomatedInboxMessage({
     recipientId: client.id,
-    subject: `Cleaning reminder — ${order.property?.name || 'your property'}`,
-    body: `Your cleaning is scheduled for ${order.scheduledDate}. Reply here if you need any extra services.`,
+    subject: `Lembrete de limpeza — ${order.property?.name || 'sua propriedade'}`,
+    body: `Sua limpeza está agendada para ${order.scheduledDate}. Responda aqui se precisar de serviços extras.`,
     messageType: messageService.MESSAGE_TYPES.REMINDER,
     serviceOrderId: order.id,
     propertyId: order.propertyId,
   });
+
+  await order.update({ cleaningReminderSentAt: new Date() });
 
   return {
     sent: true,

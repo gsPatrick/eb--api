@@ -140,6 +140,10 @@ async function createProperty(payload, locale) {
     name,
     address,
     description: description || null,
+    entryInstructions: payload.entryInstructions || null,
+    gateCode: payload.gateCode || null,
+    doorCode: payload.doorCode || null,
+    lockboxCode: payload.lockboxCode || null,
     icalUrl: icalUrl || null,
     clientId,
     status: status || PROPERTY_STATUSES.ACTIVE,
@@ -167,6 +171,10 @@ async function updateProperty(id, payload, locale) {
   if (payload.name !== undefined) updates.name = payload.name;
   if (payload.address !== undefined) updates.address = payload.address;
   if (payload.description !== undefined) updates.description = payload.description;
+  if (payload.entryInstructions !== undefined) updates.entryInstructions = payload.entryInstructions;
+  if (payload.gateCode !== undefined) updates.gateCode = payload.gateCode;
+  if (payload.doorCode !== undefined) updates.doorCode = payload.doorCode;
+  if (payload.lockboxCode !== undefined) updates.lockboxCode = payload.lockboxCode;
   if (payload.icalUrl !== undefined) updates.icalUrl = payload.icalUrl;
   if (payload.clientId !== undefined) updates.clientId = payload.clientId;
   if (payload.status !== undefined) updates.status = payload.status;

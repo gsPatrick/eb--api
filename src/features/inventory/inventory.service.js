@@ -93,9 +93,18 @@ async function getProviderPropertyIds(providerId) {
 }
 
 function notifyIfCritical(item, property) {
-  if (!item.is_critical) return;
+  const current = toNumber(item.currentQuantity ?? item.current_quantity);
+  const critical = toNumber(item.criticalLevel ?? item.critical_level);
+  const targetProperty = property || item.property;
 
-  notificationProvider.notifyInventoryCritical(item, property || item.property);
+  if (current <= critical) {
+    notificationProvider.notifyInventoryCritical(item, targetProperty);
+    return;
+  }
+
+  if (critical > 0 && current <= critical * 1.5) {
+    notificationProvider.notifyInventoryLow(item, targetProperty);
+  }
 }
 
 async function assertProviderCanUpdateQuantity(item, actor, locale) {

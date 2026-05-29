@@ -25,6 +25,22 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      entryInstructions: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      gateCode: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+      },
+      doorCode: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+      },
+      lockboxCode: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+      },
       icalUrl: {
         type: DataTypes.STRING(2048),
         allowNull: true,

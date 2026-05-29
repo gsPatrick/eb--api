@@ -89,6 +89,10 @@ const config = {
     enabled: process.env.RECURRING_SCHEDULE_ENABLED !== 'false',
     cron: process.env.RECURRING_SCHEDULE_CRON || '0 6 * * *',
   },
+  cleaningReminder: {
+    enabled: process.env.CLEANING_REMINDER_ENABLED !== 'false',
+    cron: process.env.CLEANING_REMINDER_CRON || '0 9 * * *',
+  },
   mail: {
     enabled: process.env.MAIL_ENABLED !== 'false',
     driver: process.env.MAIL_DRIVER || 'console',

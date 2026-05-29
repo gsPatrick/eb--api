@@ -50,6 +50,7 @@ const {
   InboxMessage,
   FieldReport,
   RecurringSchedule,
+  Notification,
 } = db;
 
 // --- Users ---
@@ -112,6 +113,10 @@ Property.hasMany(FieldReport, { as: 'fieldReports', foreignKey: 'propertyId' });
 RecurringSchedule.belongsTo(Property, { as: 'property', foreignKey: 'propertyId' });
 RecurringSchedule.belongsTo(User, { as: 'provider', foreignKey: 'providerId' });
 Property.hasMany(RecurringSchedule, { as: 'recurringSchedules', foreignKey: 'propertyId' });
+
+// --- Notifications ---
+Notification.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+User.hasMany(Notification, { as: 'notifications', foreignKey: 'userId' });
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

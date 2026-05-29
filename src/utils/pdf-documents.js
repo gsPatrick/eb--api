@@ -131,9 +131,15 @@ async function generateInvoicePdf(order) {
   return writePdfToFile(doc, filename);
 }
 
+function buildReceiptNumber(order) {
+  if (order.receiptNumber) return order.receiptNumber;
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `RCP-${date}-${String(order.id).slice(0, 8).toUpperCase()}`;
+}
+
 async function generateReceiptPdf(order) {
   const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
-  const receiptNumber = `RCP-${String(order.id).slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  const receiptNumber = buildReceiptNumber(order);
   const filename = `receipt-${receiptNumber}.pdf`;
   const provider = order.provider;
 
@@ -166,5 +172,6 @@ module.exports = {
   generateInvoicePdf,
   generateReceiptPdf,
   buildInvoiceNumber,
+  buildReceiptNumber,
   FINANCIAL_RELATIVE_PATH,
 };
